@@ -12,7 +12,7 @@
  <div>
  <p class="eyebrow">Realtime voice spectrum</p>
  <h1>Voice Decomposer</h1>
- <p class="lead">Разложение голоса на 50 музыкальных полос с фокусом на выбранный тон.</p>
+ <p class="lead">Разложение голоса на музыкальные полосы, пики спектра и гармоники основного тона.</p>
  </div>
 
  <button id="btn" class="mic-button" type="button">Запустить микрофон</button>
@@ -22,6 +22,7 @@
  <div class="mode-tabs" role="group" aria-label="Режим отображения">
  <button class="mode-tab active" type="button" data-mode="all">Все тоны</button>
  <button class="mode-tab" type="button" data-mode="solo">Один тон</button>
+ <button class="mode-tab" type="button" data-mode="harmonics">Гармоники</button>
  </div>
 
  <div class="tone-picker">
@@ -40,11 +41,12 @@
  </div>
 
  <div class="level-card">
- <span>Активность выбранного тона</span>
+ <span id="levelTitle">Активность выбранного тона</span>
  <div class="level-shell">
  <div id="toneLevel" class="level-fill"></div>
  </div>
  <strong id="tonePercent">0%</strong>
+ <small id="levelHint">энергия текущей полосы</small>
  </div>
  </section>
 

@@ -179,6 +179,19 @@ input[type="range"] {
  gap: 5px;
 }
 
+body[data-mode="harmonics"] .slider-wrap,
+body[data-mode="harmonics"] .tone-grid {
+ display: none;
+}
+
+body[data-mode="harmonics"] .tone-picker {
+ align-content: center;
+}
+
+body[data-mode="harmonics"] .tone-summary {
+ grid-template-columns: minmax(72px, 1fr) auto minmax(120px, 1fr);
+}
+
 .tone-chip {
  min-width: 0;
  aspect-ratio: 1;
@@ -204,6 +217,12 @@ input[type="range"] {
 .level-card span {
  color: var(--muted);
  font-size: 0.9rem;
+}
+
+.level-card small {
+ color: var(--muted);
+ font-size: 0.78rem;
+ line-height: 1.35;
 }
 
 .level-card strong {
@@ -297,7 +316,7 @@ canvas {
  }
 
  .mode-tabs {
- grid-template-columns: 1fr 1fr;
+ grid-template-columns: repeat(3, 1fr);
  }
 
  .tone-grid {
@@ -306,6 +325,10 @@ canvas {
 }
 
 @media (max-width: 560px) {
+ .mode-tabs {
+ grid-template-columns: 1fr;
+ }
+
  .tone-summary {
  grid-template-columns: 1fr;
  gap: 4px;

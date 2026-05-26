@@ -2,6 +2,7 @@ let audioContext, analyser, stream, animationFrame;
 let isRunning = false;
 let spectrumHistory = [];
 let soloHistory = [];
+let harmonicHistory = [];
 let selectedTone = 24;
 let displayMode = 'all';
 
@@ -9,6 +10,8 @@ const TONE_COUNT = 50;
 const MIN_FREQ = 80;
 const MAX_FREQ = 4200;
 const MAX_HISTORY = 144;
+const PEAK_LIMIT = 12;
+const HARMONIC_LIMIT = 8;
 const toneBands = createToneBands();
 
 const btn = document.getElementById('btn');
@@ -24,6 +27,8 @@ const toneNote = document.getElementById('toneNote');
 const toneRange = document.getElementById('toneRange');
 const toneLevel = document.getElementById('toneLevel');
 const tonePercent = document.getElementById('tonePercent');
+const levelTitle = document.getElementById('levelTitle');
+const levelHint = document.getElementById('levelHint');
 const spectrumLabel = document.getElementById('spectrumLabel');
 const historyLabel = document.getElementById('historyLabel');
 const modeTabs = [...document.querySelectorAll('.mode-tab')];
@@ -36,6 +41,7 @@ modeTabs.forEach(tab => {
 
 buildToneGrid();
 updateToneUI();
+document.body.dataset.mode = displayMode;
 drawIdle();
 
 async function toggleMic() {
@@ -71,6 +77,7 @@ async function toggleMic() {
 
  spectrumHistory = [];
  soloHistory = [];
+ harmonicHistory = [];
  animate();
  } catch (err) {
  console.error(err);
@@ -101,9 +108,14 @@ function animate() {
  analyser.getByteFrequencyData(dataArray);
 
  const levels = toneBands.map(band => getBandLevel(dataArray, band));
+ const analysis = analyzeHarmonics(dataArray);
  const currentLevel = levels[selectedTone];
  const peak = Math.max(...levels, 0.01);
- const normalized = currentLevel / 255;
+ const focusedLevel = displayMode === 'harmonics'
+ ? (analysis.fundamental ? analysis.fundamental.level / 255 : 0)
+ : currentLevel / 255;
+
+ if (displayMode === 'harmonics') updateHarmonicUI(analysis);
 
  spectrumHistory.push(levels);
  if (spectrumHistory.length > MAX_HISTORY) spectrumHistory.shift();
@@ -111,9 +123,12 @@ function animate() {
  soloHistory.push(currentLevel);
  if (soloHistory.length > MAX_HISTORY) soloHistory.shift();
 
- drawSpectrum(levels, peak);
- drawHistory(levels);
- updateLevel(normalized);
+ harmonicHistory.push(analysis.harmonics.map(harmonic => harmonic.level));
+ if (harmonicHistory.length > MAX_HISTORY) harmonicHistory.shift();
+
+ drawSpectrum(levels, peak, analysis);
+ drawHistory(levels, analysis);
+ updateLevel(focusedLevel);
 
  animationFrame = requestAnimationFrame(animate);
 }
@@ -155,7 +170,146 @@ function getBandLevel(dataArray, band) {
  return average * 0.65 + peak * 0.35;
 }
 
-function drawSpectrum(levels, peak) {
+function analyzeHarmonics(dataArray) {
+ const peaks = findSpectralPeaks(dataArray);
+ const fundamental = estimateFundamental(peaks, dataArray);
+ const harmonics = fundamental ? buildHarmonicSeries(dataArray, fundamental.frequency) : [];
+
+ return { peaks, fundamental, harmonics };
+}
+
+function findSpectralPeaks(dataArray) {
+ const binWidth = audioContext.sampleRate / analyser.fftSize;
+ const start = Math.max(2, Math.floor(70 / binWidth));
+ const end = Math.min(dataArray.length - 3, Math.ceil(5000 / binWidth));
+ let maxValue = 0;
+
+ for (let i = start; i <= end; i++) {
+ maxValue = Math.max(maxValue, dataArray[i]);
+ }
+
+ const threshold = Math.max(18, maxValue * 0.18);
+ const candidates = [];
+
+ for (let i = start; i <= end; i++) {
+ const value = dataArray[i];
+ if (value < threshold) continue;
+ if (value <= dataArray[i - 1] || value <= dataArray[i + 1]) continue;
+ if (value < dataArray[i - 2] || value < dataArray[i + 2]) continue;
+
+ const refinedBin = refinePeakBin(dataArray, i);
+ candidates.push({
+ bin: refinedBin,
+ frequency: refinedBin * binWidth,
+ level: value
+ });
+ }
+
+ candidates.sort((a, b) => b.level - a.level);
+ const peaks = [];
+
+ candidates.forEach(candidate => {
+ const isTooClose = peaks.some(peak => Math.abs(peak.frequency - candidate.frequency) < 36);
+ if (!isTooClose) peaks.push(candidate);
+ });
+
+ return peaks
+ .slice(0, PEAK_LIMIT)
+ .sort((a, b) => a.frequency - b.frequency);
+}
+
+function refinePeakBin(dataArray, index) {
+ const left = dataArray[index - 1];
+ const center = dataArray[index];
+ const right = dataArray[index + 1];
+ const denominator = left - 2 * center + right;
+
+ if (!denominator) return index;
+ return index + 0.5 * (left - right) / denominator;
+}
+
+function estimateFundamental(peaks, dataArray) {
+ const voiceCandidates = peaks.filter(peak => peak.frequency >= 70 && peak.frequency <= 360);
+ if (!voiceCandidates.length) return null;
+
+ let best = null;
+
+ voiceCandidates.forEach(candidate => {
+ let score = candidate.level * 1.15;
+
+ for (let harmonic = 2; harmonic <= HARMONIC_LIMIT; harmonic++) {
+ const target = candidate.frequency * harmonic;
+ const match = findClosestPeak(peaks, target, Math.max(18, target * 0.035));
+ if (match) {
+ const distance = Math.abs(match.frequency - target);
+ const closeness = 1 - distance / Math.max(18, target * 0.035);
+ score += match.level * closeness / Math.sqrt(harmonic);
+ } else {
+ const localLevel = getFrequencyLevel(dataArray, target, Math.max(12, target * 0.018));
+ score += localLevel / (harmonic * 1.8);
+ }
+ }
+
+ if (!best || score > best.score) {
+ best = {
+ frequency: candidate.frequency,
+ level: candidate.level,
+ note: getNearestNote(candidate.frequency),
+ score
+ };
+ }
+ });
+
+ return best;
+}
+
+function buildHarmonicSeries(dataArray, fundamentalFrequency) {
+ return Array.from({ length: HARMONIC_LIMIT }, (_, index) => {
+ const harmonic = index + 1;
+ const frequency = fundamentalFrequency * harmonic;
+ const level = frequency <= 5000
+ ? getFrequencyLevel(dataArray, frequency, Math.max(10, frequency * 0.02))
+ : 0;
+
+ return {
+ harmonic,
+ frequency,
+ level,
+ note: getNearestNote(frequency)
+ };
+ });
+}
+
+function getFrequencyLevel(dataArray, frequency, windowHz) {
+ const binWidth = audioContext.sampleRate / analyser.fftSize;
+ const center = Math.round(frequency / binWidth);
+ const radius = Math.max(1, Math.round(windowHz / binWidth));
+ const start = Math.max(1, center - radius);
+ const end = Math.min(dataArray.length - 1, center + radius);
+ let peak = 0;
+
+ for (let i = start; i <= end; i++) {
+ peak = Math.max(peak, dataArray[i]);
+ }
+
+ return peak;
+}
+
+function findClosestPeak(peaks, target, tolerance) {
+ let closest = null;
+
+ peaks.forEach(peak => {
+ const distance = Math.abs(peak.frequency - target);
+ if (distance > tolerance) return;
+ if (!closest || distance < closest.distance) {
+ closest = { ...peak, distance };
+ }
+ });
+
+ return closest;
+}
+
+function drawSpectrum(levels, peak, analysis = getIdleAnalysis()) {
  const { width, height } = spectrumCanvas;
  const padding = 30;
  const graphHeight = height - padding * 2;
@@ -167,6 +321,11 @@ function drawSpectrum(levels, peak) {
 
  if (displayMode === 'solo') {
  drawSoloSpectrum(levels[selectedTone], peak);
+ return;
+ }
+
+ if (displayMode === 'harmonics') {
+ drawHarmonicSpectrum(analysis);
  return;
  }
 
@@ -234,12 +393,85 @@ function drawSoloSpectrum(level, peak) {
  specCtx.textAlign = 'left';
 }
 
-function drawHistory(levels) {
+function drawHarmonicSpectrum(analysis) {
+ const { width, height } = spectrumCanvas;
+ const padding = 44;
+ const usableWidth = width - padding * 2;
+ const usableHeight = height - padding * 2;
+ const maxLevel = Math.max(...analysis.peaks.map(peak => peak.level), 80);
+
+ specCtx.fillStyle = 'rgba(255, 255, 255, 0.035)';
+ roundRect(specCtx, padding, padding, usableWidth, usableHeight, 8);
+ specCtx.fill();
+
+ drawFrequencyAxis(specCtx, width, height, padding);
+
+ analysis.peaks.forEach(peak => {
+ const x = frequencyToX(peak.frequency, padding, usableWidth);
+ const normalized = Math.min(1, peak.level / maxLevel);
+ const peakHeight = normalized * usableHeight;
+ const y = height - padding - peakHeight;
+
+ specCtx.strokeStyle = 'rgba(56, 217, 255, 0.34)';
+ specCtx.lineWidth = 2;
+ specCtx.beginPath();
+ specCtx.moveTo(x, height - padding);
+ specCtx.lineTo(x, y);
+ specCtx.stroke();
+
+ specCtx.fillStyle = 'rgba(56, 217, 255, 0.88)';
+ specCtx.beginPath();
+ specCtx.arc(x, y, 4 + normalized * 5, 0, Math.PI * 2);
+ specCtx.fill();
+ });
+
+ if (!analysis.fundamental) {
+ drawCenteredCanvasText(specCtx, 'Скажи протяжное "ааа", чтобы поймать основу голоса', width, height);
+ return;
+ }
+
+ analysis.harmonics.forEach(item => {
+ if (item.frequency > 5000) return;
+
+ const x = frequencyToX(item.frequency, padding, usableWidth);
+ const normalized = Math.min(1, item.level / Math.max(maxLevel, analysis.fundamental.level, 80));
+ const markerHeight = Math.max(18, normalized * usableHeight);
+ const y = height - padding - markerHeight;
+ const isRoot = item.harmonic === 1;
+
+ specCtx.strokeStyle = isRoot ? '#ffd166' : 'rgba(53, 242, 154, 0.92)';
+ specCtx.lineWidth = isRoot ? 5 : 3;
+ specCtx.beginPath();
+ specCtx.moveTo(x, height - padding);
+ specCtx.lineTo(x, y);
+ specCtx.stroke();
+
+ specCtx.fillStyle = isRoot ? '#ffd166' : '#35f29a';
+ specCtx.font = isRoot ? '900 18px Segoe UI, Arial, sans-serif' : '800 14px Segoe UI, Arial, sans-serif';
+ specCtx.textAlign = 'center';
+ specCtx.fillText(`H${item.harmonic}`, x, Math.max(20, y - 10));
+ });
+
+ specCtx.textAlign = 'left';
+ specCtx.fillStyle = '#f4f7fb';
+ specCtx.font = '900 28px Segoe UI, Arial, sans-serif';
+ specCtx.fillText(`${analysis.fundamental.note} · ${Math.round(analysis.fundamental.frequency)} Hz`, padding + 8, padding + 34);
+ specCtx.font = '700 15px Segoe UI, Arial, sans-serif';
+ specCtx.fillStyle = 'rgba(244, 247, 251, 0.66)';
+ specCtx.fillText('основа голоса и ближайшие обертоны', padding + 10, padding + 58);
+}
+
+function drawHistory(levels, analysis = getIdleAnalysis()) {
  const { width, height } = spectrogramCanvas;
  paintCanvasBackground(spectroCtx, width, height);
 
  if (displayMode === 'solo') {
  drawSoloHistory(width, height);
+ return;
+ }
+
+ if (displayMode === 'harmonics') {
+ drawHarmonicHistory(width, height, analysis);
  return;
  }
 
@@ -283,18 +515,55 @@ function drawSoloHistory(width, height) {
  spectroCtx.shadowBlur = 0;
 }
 
+function drawHarmonicHistory(width, height, analysis) {
+ const padding = 34;
+ const usableWidth = width - padding * 2;
+ const usableHeight = height - padding * 2;
+ const rowHeight = usableHeight / HARMONIC_LIMIT;
+ const columnWidth = usableWidth / MAX_HISTORY;
+ const startX = padding + usableWidth - harmonicHistory.length * columnWidth;
+
+ drawGrid(spectroCtx, width, height, padding);
+
+ harmonicHistory.forEach((row, columnIndex) => {
+ for (let harmonic = 0; harmonic < HARMONIC_LIMIT; harmonic++) {
+ const level = row[harmonic] || 0;
+ const intensity = Math.min(1, level / 230);
+ const x = startX + columnIndex * columnWidth;
+ const y = padding + harmonic * rowHeight;
+ const hue = harmonic === 0 ? 42 : 145 + harmonic * 12;
+
+ spectroCtx.fillStyle = `hsla(${hue}, 95%, ${16 + intensity * 60}%, ${0.18 + intensity * 0.82})`;
+ spectroCtx.fillRect(x, y, columnWidth + 0.5, rowHeight - 2);
+ }
+ });
+
+ const labelItems = analysis.harmonics.length ? analysis.harmonics : getIdleAnalysis().harmonics;
+ labelItems.forEach(item => {
+ const y = padding + (item.harmonic - 0.5) * rowHeight + 5;
+ spectroCtx.fillStyle = item.harmonic === 1 ? '#ffd166' : 'rgba(244, 247, 251, 0.72)';
+ spectroCtx.font = '800 13px Segoe UI, Arial, sans-serif';
+ spectroCtx.fillText(`H${item.harmonic}`, 10, y);
+ spectroCtx.fillText(`${Math.round(item.frequency)} Hz`, width - 82, y);
+ });
+}
+
 function drawIdle() {
  const idleLevels = toneBands.map((_, index) => {
  const wave = Math.sin(index * 0.7) * 0.5 + 0.5;
  return 20 + wave * 34;
  });
+ const idleAnalysis = getIdleAnalysis();
 
- drawSpectrum(idleLevels, 100);
+ drawSpectrum(idleLevels, 100, idleAnalysis);
  spectrumHistory = Array.from({ length: 38 }, (_, y) => {
  return toneBands.map((_, x) => 12 + Math.max(0, Math.sin(x * 0.45 + y * 0.2)) * 38);
  });
  soloHistory = Array.from({ length: 38 }, (_, index) => 26 + Math.sin(index * 0.32) * 14);
- drawHistory(idleLevels);
+ harmonicHistory = Array.from({ length: 38 }, (_, column) => {
+ return Array.from({ length: HARMONIC_LIMIT }, (_, row) => 24 + Math.max(0, Math.sin(column * 0.22 + row * 0.9)) * 52);
+ });
+ drawHistory(idleLevels, idleAnalysis);
  updateLevel(0);
 }
 
@@ -319,10 +588,29 @@ function selectTone(index) {
 }
 
 function setMode(mode) {
- displayMode = mode === 'solo' ? 'solo' : 'all';
+ displayMode = ['all', 'solo', 'harmonics'].includes(mode) ? mode : 'all';
+ document.body.dataset.mode = displayMode;
  modeTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.mode === displayMode));
- spectrumLabel.textContent = displayMode === 'solo' ? 'фокус на выбранной полосе' : '50 тонов';
- historyLabel.textContent = displayMode === 'solo' ? 'история выбранного тона' : 'энергия по частотам';
+
+ if (displayMode === 'solo') {
+ spectrumLabel.textContent = 'фокус на выбранной полосе';
+ historyLabel.textContent = 'история выбранного тона';
+ levelTitle.textContent = 'Активность выбранного тона';
+ levelHint.textContent = 'энергия текущей полосы';
+ updateToneUI();
+ } else if (displayMode === 'harmonics') {
+ spectrumLabel.textContent = 'пики FFT и обертоны';
+ historyLabel.textContent = 'история H1-H8';
+ levelTitle.textContent = 'Сила основного тона';
+ levelHint.textContent = 'оценка найденной основы голоса';
+ updateHarmonicUI(getIdleAnalysis());
+ } else {
+ spectrumLabel.textContent = '50 тонов';
+ historyLabel.textContent = 'энергия по частотам';
+ levelTitle.textContent = 'Активность выбранного тона';
+ levelHint.textContent = 'энергия текущей полосы';
+ updateToneUI();
+ }
 
  if (!isRunning) drawIdle();
 }
@@ -336,6 +624,19 @@ function updateToneUI() {
  [...toneGrid.children].forEach((chip, index) => {
  chip.classList.toggle('active', index === selectedTone);
  });
+}
+
+function updateHarmonicUI(analysis) {
+ if (!analysis.fundamental) {
+ toneNumber.textContent = 'Основа';
+ toneNote.textContent = '...';
+ toneRange.textContent = 'нет устойчивого тона';
+ return;
+ }
+
+ toneNumber.textContent = 'Основа';
+ toneNote.textContent = analysis.fundamental.note;
+ toneRange.textContent = `${Math.round(analysis.fundamental.frequency)} Hz`;
 }
 
 function updateLevel(value) {
@@ -380,6 +681,74 @@ function drawGrid(ctx, width, height, padding) {
  }
 
  ctx.restore();
+}
+
+function drawFrequencyAxis(ctx, width, height, padding) {
+ const labels = [80, 160, 320, 640, 1280, 2560, 4200];
+ const usableWidth = width - padding * 2;
+
+ ctx.save();
+ ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+ ctx.fillStyle = 'rgba(244, 247, 251, 0.52)';
+ ctx.font = '700 12px Segoe UI, Arial, sans-serif';
+
+ labels.forEach(frequency => {
+ const x = frequencyToX(frequency, padding, usableWidth);
+ ctx.beginPath();
+ ctx.moveTo(x, padding);
+ ctx.lineTo(x, height - padding);
+ ctx.stroke();
+ ctx.fillText(`${frequency}`, x - 13, height - 12);
+ });
+
+ ctx.restore();
+}
+
+function frequencyToX(frequency, padding, usableWidth) {
+ const min = Math.log2(MIN_FREQ);
+ const max = Math.log2(MAX_FREQ);
+ const value = Math.log2(Math.max(MIN_FREQ, Math.min(MAX_FREQ, frequency)));
+
+ return padding + ((value - min) / (max - min)) * usableWidth;
+}
+
+function drawCenteredCanvasText(ctx, text, width, height) {
+ ctx.save();
+ ctx.fillStyle = 'rgba(244, 247, 251, 0.72)';
+ ctx.font = '800 20px Segoe UI, Arial, sans-serif';
+ ctx.textAlign = 'center';
+ ctx.fillText(text, width / 2, height / 2);
+ ctx.restore();
+}
+
+function getIdleAnalysis() {
+ const base = 146.8;
+ const harmonics = Array.from({ length: HARMONIC_LIMIT }, (_, index) => {
+ const harmonic = index + 1;
+ const frequency = base * harmonic;
+
+ return {
+ harmonic,
+ frequency,
+ level: 80 / Math.sqrt(harmonic),
+ note: getNearestNote(frequency)
+ };
+ });
+
+ return {
+ peaks: harmonics.map(item => ({
+ frequency: item.frequency,
+ level: item.level,
+ bin: 0
+ })),
+ fundamental: {
+ frequency: base,
+ level: 80,
+ note: getNearestNote(base),
+ score: 1
+ },
+ harmonics
+ };
 }
 
 function drawToneCallout(ctx, band, level, x, y, barWidth) {
