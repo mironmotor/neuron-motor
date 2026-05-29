@@ -145,7 +145,11 @@ btn.addEventListener('click', async () => {
       const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
       const gain = ctx.createGain();
       const an = ctx.createAnalyser(); an.fftSize = 1024;
-      src.connect(bp); bp.connect(gain); gain.connect(an); an.connect(master);
+      // звуковой путь: src -> bp -> gain -> master -> наушники
+      src.connect(bp); bp.connect(gain); gain.connect(master);
+      // метр снимаем ДО гейна, чтобы визуалка показывала реальное содержимое
+      // полосы даже когда слой приглушён или не в соло
+      bp.connect(an);
       const c = { bp, gain, an, buf:new Float32Array(an.fftSize),
                   soloed:false, muted:false, vol:1, meterEl:el('meter'+i) };
       chains.push(c);
@@ -192,10 +196,12 @@ function configureFilters() {
 
 // solo/mute логика
 function applyGains() {
+  if (ctx && ctx.state === 'suspended') ctx.resume(); // страховка от заснувшего аудио
   const anySolo = chains.some(c => c.soloed);
   chains.forEach(c => {
     const audible = (anySolo ? c.soloed : true) && !c.muted;
-    c.gain.gain.setTargetAtTime(audible ? c.vol : 0, ctx.currentTime, 0.02);
+    // makeup ×1.8 — одиночная полоса узкая и тихая, компенсируем громкость
+    c.gain.gain.setTargetAtTime(audible ? c.vol * 1.8 : 0, ctx.currentTime, 0.02);
   });
 }
 
@@ -243,7 +249,8 @@ function loop() {
     c.an.getFloatTimeDomainData(c.buf);
     let r = 0; for (let i = 0; i < c.buf.length; i++) r += c.buf[i] * c.buf[i];
     r = Math.sqrt(r / c.buf.length);
-    c.meterEl.style.width = Math.min(100, r * 320) + '%';
+    // sqrt-шкала + повышенная чувствительность, чтобы тихие верхние полосы было видно
+    c.meterEl.style.width = Math.min(100, Math.sqrt(r) * 140) + '%';
   });
 }
 </script>
