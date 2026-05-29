@@ -50,7 +50,7 @@
       <button class="ghost" id="reRecBtn">⟲ Перезаписать</button>
       <button class="ghost" id="dlAudioBtn">💾 Аудио</button>
       <button class="ghost" id="dlImgBtn">🖼 Картинка</button>
-      <span class="volrow">громкость <input type="range" id="vol" min="0" max="1.6" step="0.01" value="1"></span>
+      <span class="volrow">громкость <input type="range" id="vol" min="0" max="3" step="0.01" value="1.5"></span>
     </div>
 
     <div class="stage">
@@ -84,6 +84,7 @@ const MAKEUP = 1.8;
 
 let ctx = null, stream = null, mediaRec = null, recChunks = [], recordedBlob = null, recordedBuffer = null;
 let isRecording = false, isPlaying = false, source = null, master = null, dryGain = null, bandGain = null, bp = null;
+let norm = null, comp = null, normFactor = 1;
 let specImage = null; // закэшированная картинка спектрограммы (ImageData)
 let band = 16;        // 16 = ВСЁ, 1..15 = полоса
 
@@ -120,10 +121,11 @@ async function onRecStop() {
   statusEl.textContent = '💾 Сохранено, строю спектрограмму…';
   try {
     recordedBuffer = await ctx.decodeAudioData(await recordedBlob.arrayBuffer());
+    normFactor = computeNorm(recordedBuffer);
     renderSpectrogram(recordedBuffer);
     playerEl.style.display = 'block';
     band = 16; slider.value = 16; updateBandLabel(); drawOverlay();
-    statusEl.textContent = '✅ Готово! Жми ▶ и двигай ползунок по полосам';
+    statusEl.textContent = `✅ Готово! Жми ▶ и двигай ползунок (усиление ×${normFactor.toFixed(1)})`;
   } catch (e) { statusEl.innerHTML = `<span style="color:#ff6666">Не удалось обработать запись: ${e.message}</span>`; }
 }
 
@@ -148,6 +150,17 @@ function fft(re, im) {
       }
     }
   }
+}
+
+// измеряем пик записи -> коэффициент нормализации громкости
+function computeNorm(buffer) {
+  let peak = 0;
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    const d = buffer.getChannelData(c);
+    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
+  }
+  if (peak < 1e-4) return 1;
+  return Math.min(16, 0.97 / peak);
 }
 
 function colormap(v) { // jet с затемнением слабых значений (как на референсе)
@@ -227,12 +240,17 @@ function updateBandLabel() {
 playBtn.addEventListener('click', async () => { await ensureCtx(); if (!recordedBuffer) return; if (isPlaying) stopPlayback(); else startPlayback(); });
 
 function startPlayback() {
-  master = ctx.createGain(); master.gain.value = parseFloat(volEl.value); master.connect(ctx.destination);
+  master = ctx.createGain(); master.gain.value = parseFloat(volEl.value);
+  // нормализация + компрессор = громкий и плотный голос без клиппинга
+  norm = ctx.createGain(); norm.gain.value = normFactor;
+  comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -22; comp.knee.value = 28; comp.ratio.value = 3.2; comp.attack.value = 0.003; comp.release.value = 0.25;
+  norm.connect(comp); comp.connect(master); master.connect(ctx.destination);
   dryGain = ctx.createGain(); bandGain = ctx.createGain();
   bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
   source = ctx.createBufferSource(); source.buffer = recordedBuffer; source.loop = true;
-  source.connect(dryGain); dryGain.connect(master);            // путь «ВСЁ»
-  source.connect(bp); bp.connect(bandGain); bandGain.connect(master); // путь «полоса»
+  source.connect(dryGain); dryGain.connect(norm);              // путь «ВСЁ»
+  source.connect(bp); bp.connect(bandGain); bandGain.connect(norm); // путь «полоса»
   applyBand();
   source.start();
   isPlaying = true; playBtn.textContent = '⏸ Пауза'; playBtn.classList.add('active');
