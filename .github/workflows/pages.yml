@@ -28,6 +28,10 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          # Auto-enable GitHub Pages (build type = GitHub Actions) if it isn't
+          # enabled yet, so no manual Settings change is required.
+          enablement: true
 
       - name: Upload site (repo root)
         uses: actions/upload-pages-artifact@v3
