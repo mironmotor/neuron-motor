@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Decomposer · Studio</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --accent:#00ff88; --accent-dim:#00cc66; --bg:#070a09; --card:#0d120f; --line:#1d2a24; --muted:#6f7d76; }
+  body { background:radial-gradient(circle at 50% -10%, #0f1a16 0%, var(--bg) 60%); color:var(--accent);
+    font-family:'Segoe UI',Arial,sans-serif; padding:20px; min-height:100vh; }
+  .wrap { max-width:920px; margin:0 auto; }
+  h1 { font-size:2.4rem; text-align:center; letter-spacing:.5px; }
+  h1 small { display:block; font-size:.95rem; color:var(--muted); font-weight:normal; letter-spacing:.2em; text-transform:uppercase; margin-top:4px; }
+  p.sub { text-align:center; opacity:.8; margin:8px 0 14px; }
+  .warn { background:#241a0a; border:1px solid #5a4012; color:#ffc24b; border-radius:12px; padding:10px 16px; font-size:.85rem; text-align:center; margin-bottom:16px; }
+
+  .controls { display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap; margin-bottom:10px; }
+  button#btn { font-size:1.2rem; padding:13px 38px; background:var(--accent-dim); color:#000; border:none; border-radius:50px; font-weight:bold; cursor:pointer; transition:.2s; }
+  button#btn:hover { background:var(--accent); transform:scale(1.04); }
+  button#btn.active { background:#ff4444; }
+  .pill { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border:1px solid var(--line); border-radius:40px; background:var(--card); color:var(--accent); cursor:pointer; font-weight:bold; font-size:.9rem; }
+  .pill.off { color:var(--muted); }
+  .pill input[type=range] { width:120px; accent-color:var(--accent); }
+  #recBtn.rec { background:#ff4444; color:#000; border-color:#ff6666; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(255,68,68,.5);} 50%{ box-shadow:0 0 0 8px rgba(255,68,68,0);} }
+  #status { text-align:center; min-height:22px; margin:10px 0 16px; font-size:1rem; }
+
+  .stage { display:grid; grid-template-columns: 1fr; gap:18px; align-items:center; }
+  @media(min-width:780px){ .stage { grid-template-columns: 1.2fr 1fr; } }
+  .bloom-wrap { text-align:center; }
+  canvas.bloom { width:100%; max-width:560px; aspect-ratio:1/1; background:radial-gradient(circle,#0a0f0d,#060807); border:1px solid var(--line); border-radius:50%; box-shadow:0 0 40px rgba(0,255,136,.12); cursor:pointer; }
+  .selinfo { font-size:.9rem; color:var(--muted); margin-top:8px; min-height:1.4em; }
+  .selinfo b { color:var(--accent); font-size:1.05rem; }
+
+  .state-block { background:linear-gradient(120deg,var(--card),#10201c); border:1px solid var(--line); border-radius:14px; padding:14px 18px; text-align:center; margin-bottom:12px; }
+  .lab { font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .state { font-size:1.7rem; font-weight:bold; color:var(--accent); min-height:1.4em; line-height:1.2; }
+  .big { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px; }
+  .block { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .val { font-size:1.7rem; font-weight:bold; color:var(--accent); line-height:1.1; }
+  .val small { font-size:.8rem; color:var(--muted); font-weight:normal; }
+  .meter { margin:8px 0; text-align:left; }
+  .meter label { display:flex; justify-content:space-between; font-size:.75rem; color:#8a978f; margin-bottom:5px; }
+  .meter label b { color:var(--accent); }
+  .track { height:10px; background:#0c1210; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .fill { height:100%; width:0%; border-radius:6px; transition:width .07s linear; }
+  .fill.lo{ background:linear-gradient(90deg,#0c5,#0fa);} .fill.hi{ background:linear-gradient(90deg,#0af,#5ff);} .fill.br{ background:linear-gradient(90deg,#fa0,#ff5);}
+  .reg { position:relative; height:22px; border-radius:7px; border:1px solid var(--line); background:linear-gradient(90deg,#10201c,#201a10);}
+  .reg .t { position:absolute; top:50%; transform:translateY(-50%); font-size:.65rem; color:var(--muted);} .reg .t.l{left:8px;} .reg .t.r{right:8px;}
+  .reg .mark { position:absolute; top:0; bottom:0; width:4px; border-radius:3px; background:var(--accent); box-shadow:0 0 12px var(--accent); transition:left .1s; }
+
+  .strip-wrap { margin-top:6px; text-align:left; }
+  .strip-wrap label { display:block; font-size:.8rem; color:#8a978f; margin:18px 0 6px; }
+  canvas.strip { width:100%; max-width:920px; height:150px; background:#000; border:1px solid var(--line); border-radius:12px; cursor:pointer; }
+  canvas.spectro { width:100%; max-width:920px; height:180px; background:#000; border:1px solid var(--line); border-radius:12px; margin-top:14px; }
+  .foot { margin-top:18px; display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+  .foot a { color:var(--muted); font-size:.85rem; text-decoration:none; } .foot a:hover{ color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎤 Voice Decomposer <small>Studio</small></h1>
+  <p class="sub">Видишь и слышишь свой голос, разложенный на 50 музыкальных тонов · кликни тон, чтобы услышать его отдельно</p>
+  <div class="warn">🎧 Надень наушники — выбранный тон звучит в них. Без наушников возможен свист (обратная связь).</div>
+
+  <div class="controls">
+    <button id="btn">▶ Запустить микрофон</button>
+    <button class="pill" id="monBtn">🔊 Мониторинг</button>
+    <span class="pill"><span style="color:var(--muted);font-size:.8rem">громкость</span><input type="range" id="masterVol" min="0" max="1" step="0.01" value="0.8"></span>
+    <button class="pill" id="recBtn">⏺ Запись</button>
+  </div>
+  <div id="status">Нажми кнопку и разреши доступ к микрофону</div>
+
+  <div class="stage">
+    <div class="bloom-wrap">
+      <canvas id="bloom" class="bloom" width="600" height="600"></canvas>
+      <div class="selinfo" id="selInfo">Тон не выбран — кликни по цветку или шкале ниже</div>
+    </div>
+    <div class="panel">
+      <div class="state-block"><div class="lab">Акустическое состояние</div><div class="state" id="stateVal">—</div></div>
+      <div class="big">
+        <div class="block"><div class="lab">Тон</div><div class="val"><span id="f0val">—</span><small> Гц</small></div></div>
+        <div class="block"><div class="lab">Нота</div><div class="val"><span id="noteVal">—</span><small id="centsVal"></small></div></div>
+        <div class="block"><div class="lab">Чёткость</div><div class="val"><span id="clarVal">—</span></div></div>
+      </div>
+      <div class="meter"><label>Регистр · низ ↔ верх <b id="regTxt">—</b></label>
+        <div class="reg"><span class="t l">70 Гц</span><span class="t r">1 кГц</span><div class="mark" id="regMark"></div></div></div>
+      <div class="meter"><label>Низ (80–400 Гц) <b id="loTxt">—</b></label><div class="track"><div class="fill lo" id="loFill"></div></div></div>
+      <div class="meter"><label>Верх (2–8 кГц) <b id="hiTxt">—</b></label><div class="track"><div class="fill hi" id="hiFill"></div></div></div>
+      <div class="meter"><label>Яркость <b id="brTxt">—</b></label><div class="track"><div class="fill br" id="brFill"></div></div></div>
+    </div>
+  </div>
+
+  <div class="strip-wrap">
+    <label>🎹 50 музыкальных тонов (C2 → ~D6) — кликни, чтобы солировать</label>
+    <canvas id="strip" class="strip" width="1840" height="300"></canvas>
+    <canvas id="spectro" class="spectro" width="1840" height="360"></canvas>
+  </div>
+
+  <div class="foot">
+    <a href="index.html">← Визуальная версия (50 тонов)</a>
+    <a href="depths.html">🎧 Глубины голоса (6 слоёв)</a>
+    <a href="../">↑ Оригинал</a>
+  </div>
+</div>
+
+<script>
+// ===== константы: 50 музыкальных тонов от C2 =====
+const TONE_COUNT = 50, TONE_BASE = 65.4064;
+const NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const toneFreqs = [], toneLabels = [];
+for (let i = 0; i < TONE_COUNT; i++) {
+  const f = TONE_BASE * Math.pow(2, i / 12);
+  toneFreqs.push(f);
+  const midi = Math.round(12 * Math.log2(f / 440) + 69);
+  toneLabels.push(NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1));
+}
+const toneVals = new Float32Array(TONE_COUNT);
+const FMIN = 70, FMAX = 1000;
+
+let ctx, stream, src, master, soloBP, soloGain, mainAn, pitchAn;
+let freqData, toneBuf, pitchBuf, binHz, SR, raf;
+let isRunning = false, monitor = true, selected = -1, f0smooth = 0;
+let recorder = null, recChunks = [], recording = false, history = [];
+
+const el = id => document.getElementById(id);
+const btn = el('btn'), statusEl = el('status'), monBtn = el('monBtn'), masterVol = el('masterVol'), recBtn = el('recBtn');
+const bloom = el('bloom'), bx = bloom.getContext('2d');
+const strip = el('strip'), sx = strip.getContext('2d');
+const spectro = el('spectro'), px = spectro.getContext('2d');
+const ui = { state:el('stateVal'), f0:el('f0val'), note:el('noteVal'), cents:el('centsVal'), clar:el('clarVal'),
+  regMark:el('regMark'), regTxt:el('regTxt'), lo:el('loFill'), loT:el('loTxt'), hi:el('hiFill'), hiT:el('hiTxt'),
+  br:el('brFill'), brT:el('brTxt'), sel:el('selInfo') };
+
+const logT = (v,a,b) => (Math.log(v) - Math.log(a)) / (Math.log(b) - Math.log(a));
+function noteOf(f){ const n = 12*Math.log2(f/440)+69, r = Math.round(n); return { name:NAMES[((r%12)+12)%12]+(Math.floor(r/12)-1), cents:Math.round((n-r)*100) }; }
+
+// ===== управление мониторингом / записью =====
+monBtn.addEventListener('click', () => {
+  monitor = !monitor; monBtn.classList.toggle('off', !monitor);
+  monBtn.textContent = monitor ? '🔊 Мониторинг' : '🔇 Тихо';
+  if (master) master.gain.value = monitor ? parseFloat(masterVol.value) : 0;
+});
+masterVol.addEventListener('input', () => { if (master && monitor) master.gain.value = parseFloat(masterVol.value); });
+recBtn.addEventListener('click', () => {
+  if (!isRunning) { statusEl.textContent = 'Сначала запусти микрофон'; return; }
+  if (recording) { recorder.stop(); return; }
+  recChunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+  recorder.onstop = () => {
+    const blob = new Blob(recChunks, { type: recorder.mimeType || 'audio/webm' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'voice-' + new Date().toISOString().slice(0,19).replace(/[:.]/g,'-') + '.webm';
+    a.click();
+    recording = false; recBtn.classList.remove('rec'); recBtn.textContent = '⏺ Запись';
+  };
+  recorder.start();
+  recording = true; recBtn.classList.add('rec'); recBtn.textContent = '⏹ Стоп запись';
+});
+
+// ===== выбор тона (солирование на слух) =====
+function selectTone(i) {
+  if (i === selected) { selected = -1; }
+  else selected = i;
+  if (soloBP && selected >= 0) soloBP.frequency.setTargetAtTime(toneFreqs[selected], ctx.currentTime, 0.02);
+  if (soloGain) soloGain.gain.setTargetAtTime(selected >= 0 ? 1 : 0, ctx.currentTime, 0.03);
+  ui.sel.innerHTML = selected >= 0
+    ? `Слушаю тон <b>${toneLabels[selected]}</b> · ${Math.round(toneFreqs[selected])} Гц (клик ещё раз — выключить)`
+    : 'Тон не выбран — кликни по цветку или шкале ниже';
+}
+bloom.addEventListener('click', e => {
+  const r = bloom.getBoundingClientRect();
+  const cx = bloom.width/2, cy = bloom.height/2;
+  const x = (e.clientX - r.left) * (bloom.width / r.width) - cx;
+  const y = (e.clientY - r.top) * (bloom.height / r.height) - cy;
+  if (Math.hypot(x,y) < 50) { selectTone(selected); return; } // клик в центр — сброс
+  let ang = Math.atan2(y, x) + Math.PI/2; if (ang < 0) ang += Math.PI*2;
+  selectTone(Math.min(TONE_COUNT-1, Math.round(ang/(Math.PI*2)*TONE_COUNT) % TONE_COUNT));
+});
+strip.addEventListener('click', e => {
+  const r = strip.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (strip.width / r.width);
+  selectTone(Math.max(0, Math.min(TONE_COUNT-1, Math.floor(x / (strip.width / TONE_COUNT)))));
+});
+
+// ===== старт/стоп =====
+btn.addEventListener('click', async () => {
+  if (isRunning) { stop(); return; }
+  statusEl.textContent = 'Запрашиваем доступ к микрофону...';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } });
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    await ctx.resume();
+    SR = ctx.sampleRate; binHz = SR / 16384;
+    src = ctx.createMediaStreamSource(stream);
+
+    master = ctx.createGain(); master.gain.value = monitor ? parseFloat(masterVol.value) : 0; master.connect(ctx.destination);
+    soloBP = ctx.createBiquadFilter(); soloBP.type = 'bandpass'; soloBP.Q.value = 14; soloBP.frequency.value = 220;
+    soloGain = ctx.createGain(); soloGain.gain.value = 0;
+    src.connect(soloBP); soloBP.connect(soloGain); soloGain.connect(master);
+
+    mainAn = ctx.createAnalyser(); mainAn.fftSize = 16384; mainAn.smoothingTimeConstant = 0.6;
+    pitchAn = ctx.createAnalyser(); pitchAn.fftSize = 2048;
+    src.connect(mainAn); src.connect(pitchAn);
+
+    freqData = new Uint8Array(mainAn.frequencyBinCount);
+    pitchBuf = new Float32Array(2048);
+
+    isRunning = true; btn.textContent = '⏹ Остановить'; btn.classList.add('active');
+    statusEl.textContent = '✅ Говори в микрофон. Кликни тон — услышишь его отдельно';
+    if (selected >= 0) selectTone(selected); // восстановить выбор, если был
+    loop();
+  } catch (err) { statusEl.innerHTML = `<span style="color:#ff6666">Ошибка: ${err.message || 'Доступ запрещён'}</span>`; }
+});
+function stop() {
+  if (recording && recorder) recorder.stop();
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (raf) cancelAnimationFrame(raf);
+  if (ctx) ctx.close();
+  isRunning = false; btn.textContent = '▶ Запустить микрофон'; btn.classList.remove('active');
+  statusEl.textContent = 'Остановлено';
+}
+
+function detectPitch(buf) {
+  const N = buf.length; let rms = 0;
+  for (let i=0;i<N;i++) rms += buf[i]*buf[i]; rms = Math.sqrt(rms/N);
+  if (rms < 0.008) return { f:-1, rms, clarity:0 };
+  const minLag = Math.max(2, Math.floor(SR/1000)), maxLag = Math.min(N-2, Math.floor(SR/70));
+  let c0 = 0; for (let i=0;i<N;i++) c0 += buf[i]*buf[i];
+  const corr = new Float32Array(maxLag+1); let best=-1, bestC=0;
+  for (let lag=minLag; lag<=maxLag; lag++){ let s=0; for (let i=0;i<N-lag;i++) s+=buf[i]*buf[i+lag]; const c=s/c0; corr[lag]=c; if (c>bestC){bestC=c;best=lag;} }
+  if (best<0 || bestC<0.45) return { f:-1, rms, clarity:bestC };
+  let lag=best; const a=corr[best-1], b=corr[best], cc=corr[best+1], d=(a+cc-2*b);
+  if (d!==0) lag = best - 0.5*(cc-a)/d;
+  return { f:SR/lag, rms, clarity:bestC };
+}
+function acousticState(F0, rms, bright, reg) {
+  if (rms < 0.008) return '🔇 Тишина';
+  if (!F0) return '🌫 Шум / не голос';
+  const regW = reg<0.33?'низкий':reg<0.66?'средний':'высокий';
+  const brW = bright<33?'тёплый':bright<66?'сбалансированный':'яркий';
+  return `🎙 ${regW}, ${brW} голос`;
+}
+
+function loop() {
+  if (!isRunning) return;
+  raf = requestAnimationFrame(loop);
+  mainAn.getByteFrequencyData(freqData);
+  pitchAn.getFloatTimeDomainData(pitchBuf);
+
+  const pitch = detectPitch(pitchBuf);
+  const voiced = pitch.f >= 65 && pitch.f <= 1200;
+  if (voiced) f0smooth = f0smooth ? f0smooth*0.7 + pitch.f*0.3 : pitch.f;
+  const F0 = voiced ? f0smooth : 0;
+
+  // тоны
+  for (let i=0;i<TONE_COUNT;i++){
+    const f = toneFreqs[i], flo=f*Math.pow(2,-0.5/12), fhi=f*Math.pow(2,0.5/12);
+    let lo=Math.floor(flo/binHz), hi=Math.ceil(fhi/binHz); if(lo<1)lo=1; if(hi>=freqData.length)hi=freqData.length-1;
+    let peak=0; for(let b=lo;b<=hi;b++) if(freqData[b]>peak)peak=freqData[b];
+    const lvl=peak/255; toneVals[i] = lvl>toneVals[i] ? lvl : toneVals[i]*0.84 + lvl*0.16;
+  }
+  // полосы / яркость
+  let loE=0,hiE=0,cNum=0,cDen=0;
+  for (let i=1;i<freqData.length;i++){ const f=i*binHz, v=freqData[i]; cNum+=f*v; cDen+=v; if(f>=80&&f<=400)loE+=v; if(f>=2000&&f<=8000)hiE+=v; }
+  const centroid = cDen>0?cNum/cDen:FMIN;
+  const bright = Math.round(Math.max(0,Math.min(1,logT(Math.max(centroid,100),200,5000)))*100);
+  const loP = Math.min(100, Math.round(loE/900)), hiP = Math.min(100, Math.round(hiE/650));
+  const reg = F0 ? Math.max(0,Math.min(1,logT(F0,FMIN,FMAX))) : 0;
+
+  // панель
+  ui.state.textContent = acousticState(F0, pitch.rms, bright, reg);
+  if (F0){ ui.f0.textContent=Math.round(F0); const nt=noteOf(F0); ui.note.textContent=nt.name; ui.cents.textContent=(nt.cents>=0?'+':'')+nt.cents+'c'; ui.clar.textContent=Math.round(pitch.clarity*100)+'%'; ui.regMark.style.left=(reg*100)+'%'; ui.regTxt.textContent=reg<0.33?'низкий':reg<0.66?'средний':'высокий'; }
+  else { ui.f0.textContent='—'; ui.note.textContent='—'; ui.cents.textContent=''; ui.clar.textContent='—'; ui.regTxt.textContent=pitch.rms>0.008?'не голос':'тишина'; }
+  ui.lo.style.width=loP+'%'; ui.loT.textContent=loP+'%'; ui.hi.style.width=hiP+'%'; ui.hiT.textContent=hiP+'%'; ui.br.style.width=bright+'%'; ui.brT.textContent=bright+'%';
+
+  drawBloom(F0, pitch.rms);
+  drawStrip(F0);
+  drawSpectro();
+}
+
+function harmonicSet(F0){ const s=new Set(); if(F0) for(let k=1;k<=12;k++){ const idx=Math.round(12*Math.log2((F0*k)/TONE_BASE)); if(idx>=0&&idx<TONE_COUNT)s.add(idx);} return s; }
+
+// центральная радиальная раскладка
+function drawBloom(F0, rms) {
+  const W=bloom.width, H=bloom.height, cx=W/2, cy=H/2, innerR=64, maxLen=W/2-innerR-26;
+  bx.clearRect(0,0,W,H);
+  const harm = harmonicSet(F0);
+  // ядро
+  let level=0; for(let i=0;i<TONE_COUNT;i++) level+=toneVals[i]; level=Math.min(1, level/14);
+  const coreHue = F0 ? (140 - Math.max(0,Math.min(1,logT(F0,FMIN,FMAX)))*90) : 150;
+  const cg = bx.createRadialGradient(cx,cy,2,cx,cy,innerR*(0.7+level*0.8));
+  cg.addColorStop(0, `hsla(${coreHue},100%,70%,${0.85})`); cg.addColorStop(1, `hsla(${coreHue},100%,40%,0)`);
+  bx.fillStyle=cg; bx.beginPath(); bx.arc(cx,cy,innerR*(0.7+level*0.9),0,Math.PI*2); bx.fill();
+  // лепестки
+  for (let i=0;i<TONE_COUNT;i++){
+    const v=toneVals[i], ang=-Math.PI/2 + i/TONE_COUNT*Math.PI*2;
+    const len=v*maxLen, ca=Math.cos(ang), sa=Math.sin(ang);
+    const x1=cx+ca*innerR, y1=cy+sa*innerR, x2=cx+ca*(innerR+len), y2=cy+sa*(innerR+len);
+    const hue=140 - i/TONE_COUNT*90, isH=harm.has(i), isSel=i===selected;
+    bx.lineCap='round'; bx.lineWidth=isSel?9:(isH?6:4);
+    bx.strokeStyle=`hsl(${hue},100%,${50+v*30}%)`;
+    bx.shadowBlur=isSel?22:(isH?16:(v>0.3?9:0)); bx.shadowColor=`hsl(${hue},100%,60%)`;
+    bx.beginPath(); bx.moveTo(x1,y1); bx.lineTo(x2,y2); bx.stroke();
+    if (isH && len>4){ bx.shadowBlur=0; bx.fillStyle='rgba(255,255,255,.9)'; bx.beginPath(); bx.arc(x2,y2,isSel?5:3,0,Math.PI*2); bx.fill(); }
+    if (toneLabels[i].startsWith('C') && !toneLabels[i].includes('#')){
+      bx.shadowBlur=0; bx.fillStyle=isSel?'#fff':'#5b6962'; bx.font='bold 14px Arial'; bx.textAlign='center'; bx.textBaseline='middle';
+      const lr=innerR+maxLen+14; bx.fillText(toneLabels[i], cx+ca*lr, cy+sa*lr);
+    }
+  }
+  bx.shadowBlur=0;
+}
+
+function drawStrip(F0) {
+  const W=strip.width, H=strip.height, pad=26, slot=W/TONE_COUNT, bw=slot*0.64, gap=(slot-bw)/2;
+  sx.fillStyle='#000'; sx.fillRect(0,0,W,H);
+  const harm=harmonicSet(F0);
+  for (let i=0;i<TONE_COUNT;i++){
+    const v=toneVals[i], x=i*slot+gap, bh=Math.max(3, v*(H-pad-8)), y=H-pad-bh;
+    const hue=140 - i/TONE_COUNT*90, isH=harm.has(i), isSel=i===selected;
+    const g=sx.createLinearGradient(0,y,0,H-pad); g.addColorStop(0,`hsl(${hue},100%,${55+v*25}%)`); g.addColorStop(1,`hsl(${hue},90%,30%)`);
+    sx.fillStyle = isSel ? '#fff' : (v>0.04 ? g : '#16201b');
+    sx.shadowBlur = isSel?18:(isH?12:(v>0.3?7:0)); sx.shadowColor=`hsl(${hue},100%,60%)`;
+    sx.fillRect(x,y,bw,bh); sx.shadowBlur=0;
+    if (isH){ sx.strokeStyle='rgba(255,255,255,.85)'; sx.lineWidth=2; sx.beginPath(); sx.moveTo(x,y); sx.lineTo(x+bw,y); sx.stroke(); }
+    if (toneLabels[i].startsWith('C') && !toneLabels[i].includes('#')){ sx.fillStyle=isSel?'#fff':'#6f7d76'; sx.font='12px Arial'; sx.textAlign='center'; sx.fillText(toneLabels[i], x+bw/2, H-8); }
+  }
+}
+
+function drawSpectro() {
+  const slice = freqData.slice(0, 360);
+  history.push(slice); if (history.length>160) history.shift();
+  const W=spectro.width, H=spectro.height; px.fillStyle='#000'; px.fillRect(0,0,W,H);
+  const colW = W/160, rowH = H/360;
+  for (let t=0;t<history.length;t++){ const row=history[t]; for(let f=0;f<360;f++){ const v=row[f]/255; if(v<0.04)continue; px.fillStyle=`hsl(${150-f/360*90},100%,${20+v*45}%)`; px.fillRect(t*colW, H-(f+1)*rowH, colW+1, rowH+1); } }
+}
+</script>
+</body>
+</html>
