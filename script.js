@@ -3,6 +3,10 @@ let isRunning = false;
 let spectrumHistory = [];
 let soloHistory = [];
 let harmonicHistory = [];
+let stateHistory = [];
+let pitchHistory = [];
+let previousLevels = null;
+let latestVoiceState = null;
 let selectedTone = 24;
 let displayMode = 'all';
 
@@ -12,7 +16,17 @@ const MAX_FREQ = 4200;
 const MAX_HISTORY = 144;
 const PEAK_LIMIT = 12;
 const HARMONIC_LIMIT = 8;
+const STATE_HISTORY_LIMIT = 120;
 const toneBands = createToneBands();
+const stateMetrics = [
+ { key: 'energy', label: 'energy', color: '#35f29a' },
+ { key: 'focus', label: 'focus', color: '#38d9ff' },
+ { key: 'confidence', label: 'confidence', color: '#ffd166' },
+ { key: 'warmth', label: 'warmth', color: '#ffb86b' },
+ { key: 'excited', label: 'excited', color: '#ff5c8a' },
+ { key: 'tension', label: 'tension', color: '#a78bfa' },
+ { key: 'fatigue', label: 'fatigue', color: '#8ea0b8' }
+];
 
 const btn = document.getElementById('btn');
 const statusEl = document.getElementById('status');
@@ -31,6 +45,7 @@ const levelTitle = document.getElementById('levelTitle');
 const levelHint = document.getElementById('levelHint');
 const spectrumLabel = document.getElementById('spectrumLabel');
 const historyLabel = document.getElementById('historyLabel');
+const voiceStatePayload = document.getElementById('voiceStatePayload');
 const modeTabs = [...document.querySelectorAll('.mode-tab')];
 
 btn.addEventListener('click', toggleMic);
@@ -42,6 +57,7 @@ modeTabs.forEach(tab => {
 buildToneGrid();
 updateToneUI();
 document.body.dataset.mode = displayMode;
+window.getVoiceStateSnapshot = () => latestVoiceState;
 drawIdle();
 
 async function toggleMic() {
@@ -78,6 +94,9 @@ async function toggleMic() {
  spectrumHistory = [];
  soloHistory = [];
  harmonicHistory = [];
+ stateHistory = [];
+ pitchHistory = [];
+ previousLevels = null;
  animate();
  } catch (err) {
  console.error(err);
@@ -93,6 +112,7 @@ function stopMic() {
  stream = null;
  audioContext = null;
  analyser = null;
+ previousLevels = null;
  isRunning = false;
  btn.textContent = 'Запустить микрофон';
  btn.classList.remove('active');
@@ -109,13 +129,17 @@ function animate() {
 
  const levels = toneBands.map(band => getBandLevel(dataArray, band));
  const analysis = analyzeHarmonics(dataArray);
+ const voiceState = analyzeVoiceState(dataArray, levels, analysis);
  const currentLevel = levels[selectedTone];
  const peak = Math.max(...levels, 0.01);
- const focusedLevel = displayMode === 'harmonics'
+ const focusedLevel = displayMode === 'state'
+ ? voiceState.certainty
+ : displayMode === 'harmonics'
  ? (analysis.fundamental ? analysis.fundamental.level / 255 : 0)
  : currentLevel / 255;
 
  if (displayMode === 'harmonics') updateHarmonicUI(analysis);
+ if (displayMode === 'state') updateStateUI(voiceState);
 
  spectrumHistory.push(levels);
  if (spectrumHistory.length > MAX_HISTORY) spectrumHistory.shift();
@@ -126,8 +150,13 @@ function animate() {
  harmonicHistory.push(analysis.harmonics.map(harmonic => harmonic.level));
  if (harmonicHistory.length > MAX_HISTORY) harmonicHistory.shift();
 
- drawSpectrum(levels, peak, analysis);
- drawHistory(levels, analysis);
+ stateHistory.push(voiceState.scores);
+ if (stateHistory.length > STATE_HISTORY_LIMIT) stateHistory.shift();
+
+ publishVoiceState(voiceState);
+
+ drawSpectrum(levels, peak, analysis, voiceState);
+ drawHistory(levels, analysis, voiceState);
  updateLevel(focusedLevel);
 
  animationFrame = requestAnimationFrame(animate);
@@ -309,7 +338,125 @@ function findClosestPeak(peaks, target, tolerance) {
  return closest;
 }
 
-function drawSpectrum(levels, peak, analysis = getIdleAnalysis()) {
+function analyzeVoiceState(dataArray, levels, analysis) {
+ const low = getAverageInRange(dataArray, 80, 250);
+ const lowMid = getAverageInRange(dataArray, 250, 700);
+ const mid = getAverageInRange(dataArray, 700, 1600);
+ const high = getAverageInRange(dataArray, 1600, 4200);
+ const total = low + lowMid + mid + high + 0.001;
+ const energy = clamp01(total / 360);
+ const brightness = clamp01((high / total) * 2.5 + (mid / total) * 0.5);
+ const warmth = clamp01((lowMid / total) * 1.55 + (low / total) * 0.6);
+ const harmonicEnergy = analysis.harmonics.reduce((sum, item) => sum + item.level, 0);
+ const peakEnergy = analysis.peaks.reduce((sum, item) => sum + item.level, 0) || total;
+ const harmonicClarity = clamp01(harmonicEnergy / (peakEnergy * 1.4));
+ const pitch = analysis.fundamental ? analysis.fundamental.frequency : null;
+
+ if (pitch) {
+ pitchHistory.push(pitch);
+ if (pitchHistory.length > 36) pitchHistory.shift();
+ }
+
+ const pitchMotion = pitchHistory.length > 4 ? clamp01(stdDev(pitchHistory) / 80) : 0.18;
+ const spectralFlux = previousLevels ? getSpectralFlux(levels, previousLevels) : 0;
+ previousLevels = [...levels];
+
+ const stability = clamp01(1 - spectralFlux * 1.7 - pitchMotion * 0.65 - (1 - harmonicClarity) * 0.22);
+ const tension = clamp01(brightness * 0.3 + spectralFlux * 0.34 + (1 - harmonicClarity) * 0.24 + pitchMotion * 0.2);
+ const focus = clamp01(stability * 0.52 + harmonicClarity * 0.25 + (1 - Math.abs(energy - 0.56)) * 0.2 - tension * 0.12);
+ const confidence = clamp01(energy * 0.32 + stability * 0.28 + harmonicClarity * 0.26 + warmth * 0.12 - tension * 0.14);
+ const excited = clamp01(energy * 0.46 + brightness * 0.34 + pitchMotion * 0.18 - tension * 0.04);
+ const fatigue = clamp01((1 - energy) * 0.5 + (1 - brightness) * 0.2 + (1 - stability) * 0.18 + (1 - harmonicClarity) * 0.12 - confidence * 0.12);
+ const certainty = clamp01(energy * 0.28 + harmonicClarity * 0.28 + stability * 0.18 + (analysis.fundamental ? 0.18 : 0.04) + Math.min(analysis.peaks.length / 10, 1) * 0.08);
+
+ const scores = {
+ energy,
+ focus,
+ confidence,
+ warmth,
+ excited,
+ tension,
+ fatigue,
+ brightness,
+ stability
+ };
+ const labels = getStateLabels(scores);
+
+ return {
+ labels,
+ primary: labels[0],
+ certainty,
+ scores,
+ features: {
+ pitch,
+ low,
+ lowMid,
+ mid,
+ high,
+ brightness,
+ harmonicClarity,
+ pitchMotion,
+ spectralFlux,
+ stability
+ },
+ timestamp: Date.now()
+ };
+}
+
+function getAverageInRange(dataArray, lowHz, highHz) {
+ const binWidth = audioContext.sampleRate / analyser.fftSize;
+ const start = Math.max(1, Math.floor(lowHz / binWidth));
+ const end = Math.min(dataArray.length - 1, Math.ceil(highHz / binWidth));
+ let sum = 0;
+ let count = 0;
+
+ for (let i = start; i <= end; i++) {
+ sum += dataArray[i];
+ count++;
+ }
+
+ return count ? sum / count : 0;
+}
+
+function getSpectralFlux(current, previous) {
+ let sum = 0;
+
+ current.forEach((level, index) => {
+ const delta = Math.max(0, level - previous[index]) / 255;
+ sum += delta;
+ });
+
+ return clamp01(sum / Math.max(1, current.length) * 4.2);
+}
+
+function stdDev(values) {
+ const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+ const variance = values.reduce((sum, value) => sum + Math.pow(value - average, 2), 0) / values.length;
+
+ return Math.sqrt(variance);
+}
+
+function getStateLabels(scores) {
+ const candidates = [
+ { label: 'focused', value: scores.focus },
+ { label: 'confident', value: scores.confidence },
+ { label: 'excited', value: scores.excited },
+ { label: 'warm', value: scores.warmth },
+ { label: 'steady', value: scores.stability },
+ { label: 'tense', value: scores.tension },
+ { label: 'low energy', value: scores.fatigue }
+ ];
+
+ const labels = candidates
+ .filter(item => item.value >= 0.52)
+ .sort((a, b) => b.value - a.value)
+ .slice(0, 3)
+ .map(item => item.label);
+
+ return labels.length ? labels : ['neutral'];
+}
+
+function drawSpectrum(levels, peak, analysis = getIdleAnalysis(), voiceState = getIdleState()) {
  const { width, height } = spectrumCanvas;
  const padding = 30;
  const graphHeight = height - padding * 2;
@@ -326,6 +473,11 @@ function drawSpectrum(levels, peak, analysis = getIdleAnalysis()) {
 
  if (displayMode === 'harmonics') {
  drawHarmonicSpectrum(analysis);
+ return;
+ }
+
+ if (displayMode === 'state') {
+ drawStateSpectrum(voiceState);
  return;
  }
 
@@ -461,7 +613,64 @@ function drawHarmonicSpectrum(analysis) {
  specCtx.fillText('основа голоса и ближайшие обертоны', padding + 10, padding + 58);
 }
 
-function drawHistory(levels, analysis = getIdleAnalysis()) {
+function drawStateSpectrum(voiceState) {
+ const { width, height } = spectrumCanvas;
+ const padding = 42;
+ const primary = voiceState.primary || 'neutral';
+ const labels = voiceState.labels.join(' / ');
+ const barStartY = padding + 134;
+ const columnGap = 42;
+ const columnWidth = (width - padding * 2 - columnGap) / 2;
+ const rowHeight = 42;
+
+ specCtx.fillStyle = 'rgba(255, 255, 255, 0.035)';
+ roundRect(specCtx, padding, padding, width - padding * 2, height - padding * 2, 8);
+ specCtx.fill();
+
+ specCtx.font = '900 42px Segoe UI, Arial, sans-serif';
+ specCtx.fillStyle = '#f4f7fb';
+ specCtx.fillText(primary, padding + 10, padding + 52);
+
+ specCtx.font = '800 16px Segoe UI, Arial, sans-serif';
+ specCtx.fillStyle = 'rgba(244, 247, 251, 0.68)';
+ specCtx.fillText(labels, padding + 12, padding + 82);
+ specCtx.fillText(`certainty ${Math.round(voiceState.certainty * 100)}%`, padding + 12, padding + 108);
+
+ const pitchText = voiceState.features.pitch ? `${Math.round(voiceState.features.pitch)} Hz` : 'no stable pitch';
+ specCtx.textAlign = 'right';
+ specCtx.font = '700 14px Segoe UI, Arial, sans-serif';
+ specCtx.fillStyle = 'rgba(244, 247, 251, 0.58)';
+ specCtx.fillText(`pitch ${pitchText}`, width - padding - 12, padding + 54);
+ specCtx.fillText(`brightness ${Math.round(voiceState.features.brightness * 100)}% · clarity ${Math.round(voiceState.features.harmonicClarity * 100)}%`, width - padding - 12, padding + 80);
+ specCtx.textAlign = 'left';
+
+ stateMetrics.forEach((metric, index) => {
+ const value = voiceState.scores[metric.key] || 0;
+ const column = index < 4 ? 0 : 1;
+ const row = column ? index - 4 : index;
+ const x = padding + column * (columnWidth + columnGap);
+ const y = barStartY + row * rowHeight;
+ const fillWidth = Math.max(6, value * columnWidth);
+
+ specCtx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+ roundRect(specCtx, x, y, columnWidth, 14, 7);
+ specCtx.fill();
+
+ specCtx.fillStyle = metric.color;
+ roundRect(specCtx, x, y, fillWidth, 14, 7);
+ specCtx.fill();
+
+ specCtx.font = '800 13px Segoe UI, Arial, sans-serif';
+ specCtx.fillStyle = 'rgba(244, 247, 251, 0.84)';
+ specCtx.fillText(metric.label, x, y - 6);
+ specCtx.textAlign = 'right';
+ specCtx.fillText(`${Math.round(value * 100)}%`, x + columnWidth, y - 6);
+ specCtx.textAlign = 'left';
+ });
+
+}
+
+function drawHistory(levels, analysis = getIdleAnalysis(), voiceState = getIdleState()) {
  const { width, height } = spectrogramCanvas;
  paintCanvasBackground(spectroCtx, width, height);
 
@@ -472,6 +681,11 @@ function drawHistory(levels, analysis = getIdleAnalysis()) {
 
  if (displayMode === 'harmonics') {
  drawHarmonicHistory(width, height, analysis);
+ return;
+ }
+
+ if (displayMode === 'state') {
+ drawStateHistory(width, height, voiceState);
  return;
  }
 
@@ -548,14 +762,47 @@ function drawHarmonicHistory(width, height, analysis) {
  });
 }
 
+function drawStateHistory(width, height, voiceState) {
+ const padding = 34;
+ const usableWidth = width - padding * 2;
+ const usableHeight = height - padding * 2;
+ const rowHeight = usableHeight / stateMetrics.length;
+ const columnWidth = usableWidth / STATE_HISTORY_LIMIT;
+ const startX = padding + usableWidth - stateHistory.length * columnWidth;
+
+ drawGrid(spectroCtx, width, height, padding);
+
+ stateHistory.forEach((row, columnIndex) => {
+ stateMetrics.forEach((metric, metricIndex) => {
+ const value = row[metric.key] || 0;
+ const x = startX + columnIndex * columnWidth;
+ const y = padding + metricIndex * rowHeight;
+ const alpha = 0.18 + value * 0.82;
+
+ spectroCtx.fillStyle = hexToRgba(metric.color, alpha);
+ spectroCtx.fillRect(x, y, columnWidth + 0.5, rowHeight - 2);
+ });
+ });
+
+ stateMetrics.forEach((metric, index) => {
+ const y = padding + (index + 0.58) * rowHeight;
+ const value = voiceState.scores[metric.key] || 0;
+ spectroCtx.fillStyle = metric.color;
+ spectroCtx.font = '800 13px Segoe UI, Arial, sans-serif';
+ spectroCtx.fillText(metric.label, 10, y);
+ spectroCtx.fillText(`${Math.round(value * 100)}%`, width - 54, y);
+ });
+}
+
 function drawIdle() {
  const idleLevels = toneBands.map((_, index) => {
  const wave = Math.sin(index * 0.7) * 0.5 + 0.5;
  return 20 + wave * 34;
  });
  const idleAnalysis = getIdleAnalysis();
+ const idleState = getIdleState();
 
- drawSpectrum(idleLevels, 100, idleAnalysis);
+ drawSpectrum(idleLevels, 100, idleAnalysis, idleState);
  spectrumHistory = Array.from({ length: 38 }, (_, y) => {
  return toneBands.map((_, x) => 12 + Math.max(0, Math.sin(x * 0.45 + y * 0.2)) * 38);
  });
@@ -563,8 +810,22 @@ function drawIdle() {
  harmonicHistory = Array.from({ length: 38 }, (_, column) => {
  return Array.from({ length: HARMONIC_LIMIT }, (_, row) => 24 + Math.max(0, Math.sin(column * 0.22 + row * 0.9)) * 52);
  });
- drawHistory(idleLevels, idleAnalysis);
- updateLevel(0);
+ stateHistory = Array.from({ length: 38 }, (_, column) => {
+ return {
+ energy: 0.52 + Math.sin(column * 0.18) * 0.05,
+ focus: 0.68 + Math.sin(column * 0.12) * 0.04,
+ confidence: 0.6 + Math.cos(column * 0.16) * 0.05,
+ warmth: 0.62 + Math.sin(column * 0.14 + 1) * 0.04,
+ excited: 0.34 + Math.sin(column * 0.22) * 0.05,
+ tension: 0.2 + Math.cos(column * 0.2) * 0.04,
+ fatigue: 0.18 + Math.sin(column * 0.11) * 0.03,
+ brightness: 0.48,
+ stability: 0.74
+ };
+ });
+ publishVoiceState(idleState);
+ drawHistory(idleLevels, idleAnalysis, idleState);
+ updateLevel(displayMode === 'state' ? idleState.certainty : 0);
 }
 
 function buildToneGrid() {
@@ -588,7 +849,7 @@ function selectTone(index) {
 }
 
 function setMode(mode) {
- displayMode = ['all', 'solo', 'harmonics'].includes(mode) ? mode : 'all';
+ displayMode = ['all', 'solo', 'harmonics', 'state'].includes(mode) ? mode : 'all';
  document.body.dataset.mode = displayMode;
  modeTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.mode === displayMode));
 
@@ -604,6 +865,12 @@ function setMode(mode) {
  levelTitle.textContent = 'Сила основного тона';
  levelHint.textContent = 'оценка найденной основы голоса';
  updateHarmonicUI(getIdleAnalysis());
+ } else if (displayMode === 'state') {
+ spectrumLabel.textContent = 'voice state vector';
+ historyLabel.textContent = 'история состояния';
+ levelTitle.textContent = 'Надежность оценки';
+ levelHint.textContent = 'акустическая подсказка для Max17';
+ updateStateUI(latestVoiceState || getIdleState());
  } else {
  spectrumLabel.textContent = '50 тонов';
  historyLabel.textContent = 'энергия по частотам';
@@ -637,6 +904,18 @@ function updateHarmonicUI(analysis) {
  toneNumber.textContent = 'Основа';
  toneNote.textContent = analysis.fundamental.note;
  toneRange.textContent = `${Math.round(analysis.fundamental.frequency)} Hz`;
+}
+
+function updateStateUI(voiceState) {
+ toneNumber.textContent = 'Состояние';
+ toneNote.textContent = voiceState.primary || 'neutral';
+ toneRange.textContent = `${Math.round(voiceState.certainty * 100)}% certainty`;
+}
+
+function publishVoiceState(voiceState) {
+ latestVoiceState = voiceState;
+ window.__voiceState = voiceState;
+ voiceStatePayload.textContent = JSON.stringify(voiceState);
 }
 
 function updateLevel(value) {
@@ -749,6 +1028,53 @@ function getIdleAnalysis() {
  },
  harmonics
  };
+}
+
+function getIdleState() {
+ const scores = {
+ energy: 0.52,
+ focus: 0.68,
+ confidence: 0.61,
+ warmth: 0.62,
+ excited: 0.34,
+ tension: 0.2,
+ fatigue: 0.18,
+ brightness: 0.48,
+ stability: 0.74
+ };
+
+ return {
+ labels: ['focused', 'steady', 'warm'],
+ primary: 'focused',
+ certainty: 0.42,
+ scores,
+ features: {
+ pitch: 146.8,
+ low: 42,
+ lowMid: 64,
+ mid: 48,
+ high: 32,
+ brightness: scores.brightness,
+ harmonicClarity: 0.62,
+ pitchMotion: 0.12,
+ spectralFlux: 0.08,
+ stability: scores.stability
+ },
+ timestamp: Date.now()
+ };
+}
+
+function clamp01(value) {
+ return Math.max(0, Math.min(1, value));
+}
+
+function hexToRgba(hex, alpha) {
+ const clean = hex.replace('#', '');
+ const red = parseInt(clean.slice(0, 2), 16);
+ const green = parseInt(clean.slice(2, 4), 16);
+ const blue = parseInt(clean.slice(4, 6), 16);
+
+ return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 function drawToneCallout(ctx, band, level, x, y, barWidth) {

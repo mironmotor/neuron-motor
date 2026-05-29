@@ -12,7 +12,7 @@
  <div>
  <p class="eyebrow">Realtime voice spectrum</p>
  <h1>Voice Decomposer</h1>
- <p class="lead">Разложение голоса на музыкальные полосы, пики спектра и гармоники основного тона.</p>
+ <p class="lead">Разложение голоса на музыкальные полосы, гармоники и акустическое состояние для Max17.</p>
  </div>
 
  <button id="btn" class="mic-button" type="button">Запустить микрофон</button>
@@ -23,6 +23,7 @@
  <button class="mode-tab active" type="button" data-mode="all">Все тоны</button>
  <button class="mode-tab" type="button" data-mode="solo">Один тон</button>
  <button class="mode-tab" type="button" data-mode="harmonics">Гармоники</button>
+ <button class="mode-tab" type="button" data-mode="state">Состояние</button>
  </div>
 
  <div class="tone-picker">
@@ -51,6 +52,7 @@
  </section>
 
  <div id="status" class="status">Нажми кнопку и разреши доступ к микрофону</div>
+ <output id="voiceStatePayload" class="telemetry-output" aria-hidden="true"></output>
 
  <section class="visual-stack">
  <article class="visual-block">

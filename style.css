@@ -180,15 +180,19 @@ input[type="range"] {
 }
 
 body[data-mode="harmonics"] .slider-wrap,
-body[data-mode="harmonics"] .tone-grid {
+body[data-mode="harmonics"] .tone-grid,
+body[data-mode="state"] .slider-wrap,
+body[data-mode="state"] .tone-grid {
  display: none;
 }
 
-body[data-mode="harmonics"] .tone-picker {
+body[data-mode="harmonics"] .tone-picker,
+body[data-mode="state"] .tone-picker {
  align-content: center;
 }
 
-body[data-mode="harmonics"] .tone-summary {
+body[data-mode="harmonics"] .tone-summary,
+body[data-mode="state"] .tone-summary {
  grid-template-columns: minmax(72px, 1fr) auto minmax(120px, 1fr);
 }
 
@@ -260,6 +264,10 @@ body[data-mode="harmonics"] .tone-summary {
  color: var(--rose);
 }
 
+.telemetry-output {
+ display: none;
+}
+
 .visual-stack {
  display: grid;
  gap: 14px;
@@ -316,7 +324,7 @@ canvas {
  }
 
  .mode-tabs {
- grid-template-columns: repeat(3, 1fr);
+ grid-template-columns: repeat(2, 1fr);
  }
 
  .tone-grid {
