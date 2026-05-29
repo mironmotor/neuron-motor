@@ -39,3 +39,6 @@ button#btn.active { background: #ff4444; }
 .bars .b.on { background: linear-gradient(180deg, var(--accent), var(--accent-dim)); }
 .bars .b i { position: absolute; bottom: -16px; left: 0; right: 0; text-align: center; font-size: .6rem; color: #6f7d76; font-style: normal; }
 canvas { border: 2px solid var(--accent); border-radius: 12px; background: #000; margin: 15px 0; max-width: 100%; box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 30%, transparent); }
+.exports { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 6px 0 20px; }
+.save-btn { font-size: .95rem; padding: 10px 22px; border: 1px solid var(--accent-dim); border-radius: 40px; background: transparent; color: var(--accent); cursor: pointer; font-weight: bold; transition: all .2s; }
+.save-btn:hover { background: var(--accent-dim); color: #000; box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 50%, transparent); }

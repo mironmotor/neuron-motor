@@ -18,6 +18,15 @@ const barEls = [];
 for (let i = 0; i < 12; i++) { const b = document.createElement('div'); b.className = 'b'; const i2 = document.createElement('i'); i2.textContent = (i + 1) + '×'; b.appendChild(i2); ui.bars.appendChild(b); barEls.push(b); }
 document.querySelectorAll('.mode-btn').forEach(b => { b.addEventListener('click', () => { mode = b.dataset.mode; document.querySelectorAll('.mode-btn').forEach(x => x.classList.toggle('active', x === b)); document.body.classList.toggle('space', mode === 'space'); }); });
 btn.addEventListener('click', toggleMic);
+function savePNG(canvas, name) {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const a = document.createElement('a');
+  a.download = `${name}-${ts}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+el('saveSpectrum').addEventListener('click', () => savePNG(spectrumCanvas, 'spectrum'));
+el('saveSpectro').addEventListener('click', () => savePNG(spectrogramCanvas, 'spectrogram'));
 async function toggleMic() {
   if (isRunning) { stopMic(); return; }
   statusEl.textContent = 'Запрашиваем доступ к микрофону...';
