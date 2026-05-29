@@ -84,7 +84,7 @@ const MAKEUP = 1.8;
 
 let ctx = null, stream = null, mediaRec = null, recChunks = [], recordedBlob = null, recordedBuffer = null;
 let isRecording = false, isPlaying = false, source = null, master = null, dryGain = null, bandGain = null, bp = null;
-let norm = null, comp = null, normFactor = 1;
+let norm = null, normFactor = 1;
 let specImage = null; // закэшированная картинка спектрограммы (ImageData)
 let band = 16;        // 16 = ВСЁ, 1..15 = полоса
 
@@ -241,11 +241,14 @@ playBtn.addEventListener('click', async () => { await ensureCtx(); if (!recorded
 
 function startPlayback() {
   master = ctx.createGain(); master.gain.value = parseFloat(volEl.value);
-  // нормализация + компрессор = громкий и плотный голос без клиппинга
+  // нормализация -> буст -> мягкий клиппер (tanh): громко и плотно, без хрипа
   norm = ctx.createGain(); norm.gain.value = normFactor;
-  comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -22; comp.knee.value = 28; comp.ratio.value = 3.2; comp.attack.value = 0.003; comp.release.value = 0.25;
-  norm.connect(comp); comp.connect(master); master.connect(ctx.destination);
+  const boost = ctx.createGain(); boost.gain.value = 2.2;
+  const clip = ctx.createWaveShaper(); clip.oversample = '2x';
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) { const x = i / 1023 * 2 - 1; curve[i] = Math.tanh(2.2 * x); }
+  clip.curve = curve;
+  norm.connect(boost); boost.connect(clip); clip.connect(master); master.connect(ctx.destination);
   dryGain = ctx.createGain(); bandGain = ctx.createGain();
   bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
   source = ctx.createBufferSource(); source.buffer = recordedBuffer; source.loop = true;
