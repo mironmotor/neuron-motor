@@ -3,25 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Voice Decomposer</title>
+  <title>Voice Decomposer · 50 тонов</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
     <h1>🎤 Voice Decomposer</h1>
-    <p>Разложение голоса на частоты, тоны и обертоны в реальном времени</p>
+    <p>Разложение голоса на 50 музыкальных тонов, гармоники и регистр в реальном времени</p>
     <div class="modes">
       <button class="mode-btn active" data-mode="voice">🎙 Голос</button>
       <button class="mode-btn" data-mode="space">🌐 Пространство</button>
     </div>
     <button id="btn">▶ Запустить микрофон</button>
     <div id="status">Нажми кнопку и разреши доступ к микрофону</div>
+
     <div id="voicePanel" class="panel">
+      <div class="state-block">
+        <div class="lab">Акустическое состояние</div>
+        <div class="state" id="stateVal">—</div>
+      </div>
+
       <div class="big">
         <div class="block"><div class="lab">Основной тон</div><div class="f0"><span id="f0val">—</span><small> Гц</small></div></div>
         <div class="block"><div class="lab">Нота</div><div class="note"><span id="noteVal">—</span><small id="centsVal"></small></div></div>
         <div class="block"><div class="lab">Чёткость</div><div class="clar"><span id="clarVal">—</span></div></div>
       </div>
+
       <div class="meter"><label>Регистр · низ ↔ верх <b id="regTxt">—</b></label>
         <div class="reg"><span class="t l">70 Гц</span><span class="t r">1 кГц</span><div class="mark" id="regMark"></div></div></div>
       <div class="meter"><label>Энергия низа (80–400 Гц) <b id="loTxt">—</b></label><div class="track"><div class="fill lo" id="loFill"></div></div></div>
@@ -29,9 +36,17 @@
       <div class="meter"><label>Яркость / обертоны <b id="brTxt">—</b></label><div class="track"><div class="fill br" id="brFill"></div></div></div>
       <div class="harm"><label>Обертоны · гармонический ряд 1×…12×</label><div class="bars" id="bars"></div></div>
     </div>
+
+    <div class="tones-wrap">
+      <label>🎹 Разложение на 50 музыкальных тонов (C2 → ~D6)</label>
+      <canvas id="tones" width="1000" height="240"></canvas>
+    </div>
+
     <canvas id="spectrum" width="1000" height="320"></canvas>
     <canvas id="spectrogram" width="1000" height="300"></canvas>
+
     <div class="exports">
+      <button class="save-btn" id="saveTones">💾 Тоны → PNG</button>
       <button class="save-btn" id="saveSpectrum">💾 Спектр → PNG</button>
       <button class="save-btn" id="saveSpectro">💾 Спектрограмма → PNG</button>
     </div>
