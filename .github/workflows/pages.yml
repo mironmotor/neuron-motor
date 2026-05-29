@@ -19,9 +19,12 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # NOTE: the job-level `environment: github-pages` block is intentionally
+    # omitted. GitHub resolves that environment during "Set up job", and if
+    # Pages isn't enabled yet the run is rejected before any step executes —
+    # which prevents the `enablement: true` step below from ever turning Pages
+    # on. Without the block the steps run, configure-pages enables Pages, and
+    # deploy-pages performs the deployment.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
