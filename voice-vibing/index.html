@@ -10,8 +10,10 @@
   body {
     background:linear-gradient(135deg,#0a0a2e,#16213e 50%,#0f3460);
     color:#0ff; font-family:'Courier New',monospace; display:flex; flex-direction:column;
-    touch-action:none; user-select:none;
+    touch-action:manipulation; user-select:none;
   }
+  .pad { touch-action:none; }
+  .controls { touch-action:pan-y; }
   .top { display:flex; align-items:center; justify-content:space-between; padding:8px 14px;
     background:rgba(10,10,46,.85); border-bottom:2px solid #0ff; }
   h1 { font-size:1.2rem; text-shadow:0 0 14px #0ff; letter-spacing:2px; }
@@ -84,7 +86,7 @@
 </div>
 
 <script>
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = null;
 const $ = id => document.getElementById(id);
 const canvas = $('canvas'), cctx = canvas.getContext('2d');
 
@@ -92,6 +94,18 @@ let oscs = [], gains = [], filter, masterGain, delayNode, feedbackGain, wetGain,
 let analyser, timeAn, specData, waveData;
 let active = null, octave = 4, latch = false;
 const mixLevel = [0.8, 0.4];
+
+// Ленивая инициализация аудио ВНУТРИ жеста — иначе на iOS звук не запускается
+function ensureAudio(){
+  if (!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    setup();
+    // iOS unlock: короткая тишина в рамках касания «будит» аудиовыход
+    const b = audioCtx.createBuffer(1, 1, 22050), s = audioCtx.createBufferSource();
+    s.buffer = b; s.connect(audioCtx.destination); s.start(0);
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
 
 function resize(){ canvas.width = innerWidth; canvas.height = Math.max(120, innerHeight*0.30); }
 addEventListener('resize', resize); resize();
@@ -133,18 +147,7 @@ function setup(){
 }
 
 function updateAll(){
-  oscs[0].type = $('osc1type').value;
-  oscs[1].type = $('osc2type').value;
-  oscs[1].detune.value = +$('detune').value;
-  mixLevel[0] = +$('mix1').value/100;
-  mixLevel[1] = +$('mix2').value/100;
-  filter.frequency.setTargetAtTime(+$('filterfreq').value, audioCtx.currentTime, .03);
-  filter.Q.setTargetAtTime(+$('filterq').value, audioCtx.currentTime, .03);
-  masterGain.gain.setTargetAtTime(+$('master').value, audioCtx.currentTime, .03);
-  delayNode.delayTime.value = +$('delayms').value/1000;
-  feedbackGain.gain.value = +$('feedback').value;
-  wetGain.gain.value = (+$('delayms').value>0) ? 0.6 : 0;
-
+  // подписи обновляем всегда (даже до запуска аудио)
   $('detv').textContent = $('detune').value;
   $('m1v').textContent = $('mix1').value+'%';
   $('m2v').textContent = $('mix2').value+'%';
@@ -157,10 +160,23 @@ function updateAll(){
   $('dlv').textContent = $('delayms').value+' ms';
   $('fbv').textContent = Math.round($('feedback').value*100)+'%';
   $('mv').textContent = Math.round($('master').value*100)+'%';
+  mixLevel[0] = +$('mix1').value/100;
+  mixLevel[1] = +$('mix2').value/100;
+  if (!masterGain) return; // аудио ещё не инициализировано
+
+  oscs[0].type = $('osc1type').value;
+  oscs[1].type = $('osc2type').value;
+  oscs[1].detune.value = +$('detune').value;
+  filter.frequency.setTargetAtTime(+$('filterfreq').value, audioCtx.currentTime, .03);
+  filter.Q.setTargetAtTime(+$('filterq').value, audioCtx.currentTime, .03);
+  masterGain.gain.setTargetAtTime(+$('master').value, audioCtx.currentTime, .03);
+  delayNode.delayTime.value = +$('delayms').value/1000;
+  feedbackGain.gain.value = +$('feedback').value;
+  wetGain.gain.value = (+$('delayms').value>0) ? 0.6 : 0;
 }
 
 function noteOn(freq, name, padEl){
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+  ensureAudio();
   if (active && active.padEl && active.padEl !== padEl) active.padEl.classList.remove('on');
   active = { padEl };
   const now = audioCtx.currentTime;
@@ -263,9 +279,9 @@ function draw(){
 }
 
 document.querySelectorAll('input,select').forEach(el => el.addEventListener('input', updateAll));
-addEventListener('pointerdown', () => { if (audioCtx.state==='suspended') audioCtx.resume(); }, { once:true });
+addEventListener('pointerdown', ensureAudio, { once:true });
 
-setup(); buildPads(); draw();
+buildPads(); draw();
 </script>
 </body>
 </html>
