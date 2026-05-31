@@ -64,7 +64,7 @@
   <button id="latch" class="latch">🔒 держать</button>
 </div>
 <div class="pads" id="pads"></div>
-<div class="hint">Держи клавишу пальцем — звук тянется. Крути ползунки — меняй тембр.</div>
+<div class="hint" id="hint">Держи клавишу пальцем — звук тянется. Крути ползунки — меняй тембр.</div>
 
 <div class="controls">
   <div class="cg"><label>OSC1 волна</label>
@@ -92,8 +92,9 @@ const canvas = $('canvas'), cctx = canvas.getContext('2d');
 
 let oscs = [], gains = [], filter, masterGain, delayNode, feedbackGain, wetGain, limiter;
 let analyser, timeAn, specData, waveData;
-let active = null, octave = 4, latch = false;
+let active = null, octave = 4, latch = false, sinkEl = null;
 const mixLevel = [0.8, 0.4];
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 
 // Ленивая инициализация аудио ВНУТРИ жеста — иначе на iOS звук не запускается
 function ensureAudio(){
@@ -105,6 +106,12 @@ function ensureAudio(){
     s.buffer = b; s.connect(audioCtx.destination); s.start(0);
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (sinkEl) sinkEl.play().catch(()=>{});
+  showStatus();
+}
+function showStatus(){
+  if (!audioCtx) return;
+  $('hint').textContent = `🔊 аудио: ${audioCtx.state} · ${audioCtx.sampleRate} Hz · выход: ${isIOS ? 'media (iOS, мимо mute)' : 'обычный'}`;
 }
 
 function resize(){ canvas.width = innerWidth; canvas.height = Math.max(120, innerHeight*0.30); }
@@ -127,6 +134,19 @@ function setup(){
   limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20;
   limiter.attack.value = 0.002; limiter.release.value = 0.2;
   limiter.connect(audioCtx.destination);
+  // iOS: дублируем выход через скрытый <audio>(MediaStream) — медиа-канал
+  // играет мимо аппаратного переключателя «без звука»
+  if (isIOS) {
+    try {
+      const msd = audioCtx.createMediaStreamDestination();
+      limiter.connect(msd);
+      sinkEl = new Audio();
+      sinkEl.srcObject = msd.stream;
+      sinkEl.setAttribute('playsinline', '');
+      sinkEl.volume = 1;
+      sinkEl.play().catch(()=>{});
+    } catch (e) {}
+  }
 
   delayNode = audioCtx.createDelay(2);
   feedbackGain = audioCtx.createGain();
