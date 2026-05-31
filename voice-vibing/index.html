@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎹 SYNTH · Создавай звук</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { width:100%; height:100%; overflow:hidden; }
+  body {
+    background:linear-gradient(135deg,#0a0a2e,#16213e 50%,#0f3460);
+    color:#0ff; font-family:'Courier New',monospace; display:flex; flex-direction:column;
+    touch-action:none; user-select:none;
+  }
+  .top { display:flex; align-items:center; justify-content:space-between; padding:8px 14px;
+    background:rgba(10,10,46,.85); border-bottom:2px solid #0ff; }
+  h1 { font-size:1.2rem; text-shadow:0 0 14px #0ff; letter-spacing:2px; }
+  .read { font-size:.75rem; color:#0f0; text-align:right; }
+
+  canvas { flex:1; min-height:120px; display:block; background:radial-gradient(circle at 50% 40%,#001a33,#0a0a2e); }
+
+  .pads { display:flex; gap:3px; padding:8px; background:rgba(10,10,46,.9); }
+  .pad { flex:1; height:90px; border-radius:8px; border:1px solid #0ff5;
+    background:linear-gradient(180deg,#13335a,#0a1830); color:#9fe; font-weight:bold;
+    display:flex; align-items:flex-end; justify-content:center; padding-bottom:8px; font-size:.7rem;
+    cursor:pointer; transition:transform .05s; }
+  .pad.black { background:linear-gradient(180deg,#3a1050,#1a0828); color:#f9f; }
+  .pad.on { background:linear-gradient(180deg,#0ff,#08a); color:#000; box-shadow:0 0 25px #0ff; transform:scale(.96); }
+
+  .octave { display:flex; gap:8px; justify-content:center; padding:6px; background:rgba(10,10,46,.9); }
+  .octave button { padding:8px 18px; background:#0f3460; color:#0ff; border:1px solid #0ff;
+    border-radius:6px; font-weight:bold; font-size:.9rem; cursor:pointer; }
+  .octave button.latch.on { background:#0ff; color:#000; box-shadow:0 0 16px #0ff; }
+  .octave span { color:#0f0; align-self:center; font-size:.85rem; }
+
+  .controls { background:rgba(10,10,46,.95); border-top:2px solid #0ff; max-height:34vh; overflow-y:auto;
+    padding:12px; display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  .cg { display:flex; flex-direction:column; gap:5px; background:rgba(15,52,96,.5);
+    padding:8px 10px; border-radius:8px; border-left:3px solid #f0f; }
+  .cg.b{border-left-color:#0f0}.cg.c{border-left-color:#ff0}.cg.d{border-left-color:#f60}.cg.e{border-left-color:#0ff}
+  label { font-size:.65rem; letter-spacing:1px; text-transform:uppercase; }
+  .v { color:#0f0; float:right; }
+  input[type=range]{ width:100%; accent-color:#0ff; }
+  select{ background:#0f346088; color:#0ff; border:1px solid #0ff; padding:4px; font-family:inherit; font-size:.75rem; }
+  .controls::-webkit-scrollbar{width:6px}.controls::-webkit-scrollbar-thumb{background:#0ff;border-radius:3px}
+  .hint{ text-align:center; font-size:.65rem; color:#577; padding:4px; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>🎹 SYNTH</h1>
+  <div class="read"><div id="freq">— Hz</div><div id="note">нажми клавишу</div></div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div class="octave">
+  <button id="octDown">◀ октава</button>
+  <span id="octLabel">октава 4</span>
+  <button id="octUp">октава ▶</button>
+  <button id="latch" class="latch">🔒 держать</button>
+</div>
+<div class="pads" id="pads"></div>
+<div class="hint">Держи клавишу пальцем — звук тянется. Крути ползунки — меняй тембр.</div>
+
+<div class="controls">
+  <div class="cg"><label>OSC1 волна</label>
+    <select id="osc1type"><option value="sawtooth">Пила</option><option value="square">Квадрат</option><option value="sine">Синус</option><option value="triangle">Треугольник</option></select></div>
+  <div class="cg b"><label>OSC2 волна</label>
+    <select id="osc2type"><option value="sine">Синус</option><option value="square">Квадрат</option><option value="sawtooth">Пила</option><option value="triangle">Треугольник</option></select></div>
+  <div class="cg b"><label>OSC2 расстройка <span class="v" id="detv">7</span></label><input type="range" id="detune" min="-50" max="50" value="7"></div>
+  <div class="cg"><label>OSC1 микс <span class="v" id="m1v">80%</span></label><input type="range" id="mix1" min="0" max="100" value="80"></div>
+  <div class="cg b"><label>OSC2 микс <span class="v" id="m2v">40%</span></label><input type="range" id="mix2" min="0" max="100" value="40"></div>
+  <div class="cg e"><label>Фильтр <span class="v" id="fv">3000 Hz</span></label><input type="range" id="filterfreq" min="100" max="8000" value="3000" step="10"></div>
+  <div class="cg e"><label>Резонанс <span class="v" id="qv">3</span></label><input type="range" id="filterq" min="0.1" max="25" value="3" step="0.1"></div>
+  <div class="cg d"><label>Атака <span class="v" id="av">8 ms</span></label><input type="range" id="attack" min="0" max="800" value="8"></div>
+  <div class="cg d"><label>Распад <span class="v" id="dv">250 ms</span></label><input type="range" id="decay" min="0" max="1500" value="250" step="10"></div>
+  <div class="cg d"><label>Уровень <span class="v" id="sv">60%</span></label><input type="range" id="sustain" min="0" max="100" value="60"></div>
+  <div class="cg d"><label>Отпуск <span class="v" id="rv">350 ms</span></label><input type="range" id="release" min="0" max="2500" value="350" step="10"></div>
+  <div class="cg e"><label>Дилей <span class="v" id="dlv">0 ms</span></label><input type="range" id="delayms" min="0" max="600" value="0" step="10"></div>
+  <div class="cg e"><label>Эхо обр.связь <span class="v" id="fbv">30%</span></label><input type="range" id="feedback" min="0" max="0.8" value="0.3" step="0.05"></div>
+  <div class="cg e"><label>Громкость <span class="v" id="mv">55%</span></label><input type="range" id="master" min="0" max="1" value="0.55" step="0.01"></div>
+</div>
+
+<script>
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const $ = id => document.getElementById(id);
+const canvas = $('canvas'), cctx = canvas.getContext('2d');
+
+let oscs = [], gains = [], filter, masterGain, delayNode, feedbackGain, wetGain, limiter;
+let analyser, timeAn, specData, waveData;
+let active = null, octave = 4, latch = false;
+const mixLevel = [0.8, 0.4];
+
+function resize(){ canvas.width = innerWidth; canvas.height = Math.max(120, innerHeight*0.30); }
+addEventListener('resize', resize); resize();
+
+function setup(){
+  filter = audioCtx.createBiquadFilter(); filter.type='lowpass';
+  masterGain = audioCtx.createGain();
+  for (let i=0;i<2;i++){
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    g.gain.value = 0;
+    o.connect(g); g.connect(filter);
+    o.start();
+    oscs.push(o); gains.push(g);
+  }
+  filter.connect(masterGain);
+
+  // финальный лимитер — защищает от перегруза/хрипа (резонанс + эхо)
+  limiter = audioCtx.createDynamicsCompressor();
+  limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20;
+  limiter.attack.value = 0.002; limiter.release.value = 0.2;
+  limiter.connect(audioCtx.destination);
+
+  delayNode = audioCtx.createDelay(2);
+  feedbackGain = audioCtx.createGain();
+  wetGain = audioCtx.createGain();
+  masterGain.connect(limiter);
+  masterGain.connect(delayNode);
+  delayNode.connect(feedbackGain); feedbackGain.connect(delayNode);
+  delayNode.connect(wetGain); wetGain.connect(limiter);
+
+  analyser = audioCtx.createAnalyser(); analyser.fftSize = 1024;
+  timeAn = audioCtx.createAnalyser(); timeAn.fftSize = 512;
+  masterGain.connect(analyser); masterGain.connect(timeAn);
+  wetGain.connect(analyser);
+  specData = new Uint8Array(analyser.frequencyBinCount);
+  waveData = new Uint8Array(timeAn.frequencyBinCount);
+
+  updateAll();
+}
+
+function updateAll(){
+  oscs[0].type = $('osc1type').value;
+  oscs[1].type = $('osc2type').value;
+  oscs[1].detune.value = +$('detune').value;
+  mixLevel[0] = +$('mix1').value/100;
+  mixLevel[1] = +$('mix2').value/100;
+  filter.frequency.setTargetAtTime(+$('filterfreq').value, audioCtx.currentTime, .03);
+  filter.Q.setTargetAtTime(+$('filterq').value, audioCtx.currentTime, .03);
+  masterGain.gain.setTargetAtTime(+$('master').value, audioCtx.currentTime, .03);
+  delayNode.delayTime.value = +$('delayms').value/1000;
+  feedbackGain.gain.value = +$('feedback').value;
+  wetGain.gain.value = (+$('delayms').value>0) ? 0.6 : 0;
+
+  $('detv').textContent = $('detune').value;
+  $('m1v').textContent = $('mix1').value+'%';
+  $('m2v').textContent = $('mix2').value+'%';
+  $('fv').textContent = $('filterfreq').value+' Hz';
+  $('qv').textContent = $('filterq').value;
+  $('av').textContent = $('attack').value+' ms';
+  $('dv').textContent = $('decay').value+' ms';
+  $('sv').textContent = $('sustain').value+'%';
+  $('rv').textContent = $('release').value+' ms';
+  $('dlv').textContent = $('delayms').value+' ms';
+  $('fbv').textContent = Math.round($('feedback').value*100)+'%';
+  $('mv').textContent = Math.round($('master').value*100)+'%';
+}
+
+function noteOn(freq, name, padEl){
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (active && active.padEl && active.padEl !== padEl) active.padEl.classList.remove('on');
+  active = { padEl };
+  const now = audioCtx.currentTime;
+  const A = +$('attack').value/1000, D = +$('decay').value/1000, S = +$('sustain').value/100;
+  oscs.forEach((o,i) => {
+    o.frequency.setValueAtTime(freq, now);
+    const peak = mixLevel[i];
+    const g = gains[i].gain;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(peak, now + A);
+    g.linearRampToValueAtTime(peak * S, now + A + D);
+  });
+  $('freq').textContent = Math.round(freq)+' Hz';
+  $('note').textContent = name;
+  if (padEl) padEl.classList.add('on');
+}
+
+function noteOff(){
+  if (!active) return;
+  if (latch) return; // режим «держать» — нота звучит, пока не нажмёшь другую
+  const now = audioCtx.currentTime;
+  const R = +$('release').value/1000;
+  oscs.forEach((o,i) => {
+    const g = gains[i].gain;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(0, now + R);
+  });
+  if (active.padEl) active.padEl.classList.remove('on');
+  active = null;
+}
+
+const SEMI = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const BLACK = [1,3,6,8,10];
+function midiToFreq(m){ return 440 * Math.pow(2, (m-69)/12); }
+function buildPads(){
+  const pads = $('pads'); pads.innerHTML = '';
+  for (let s=0; s<=12; s++){
+    const semitone = s % 12;
+    const oct = octave + Math.floor(s/12);
+    const midi = (oct+1)*12 + semitone;
+    const name = SEMI[semitone] + oct;
+    const freq = midiToFreq(midi);
+    const pad = document.createElement('div');
+    pad.className = 'pad' + (BLACK.includes(semitone) ? ' black' : '');
+    pad.textContent = name;
+    pad.addEventListener('pointerdown', e => { e.preventDefault(); noteOn(freq, name, pad); });
+    pad.addEventListener('pointerup', noteOff);
+    pad.addEventListener('pointerleave', () => { if (active && active.padEl===pad) noteOff(); });
+    pad.addEventListener('pointercancel', noteOff);
+    pads.appendChild(pad);
+  }
+  $('octLabel').textContent = 'октава ' + octave;
+}
+$('octUp').onclick = () => { if (octave<7){ octave++; buildPads(); } };
+$('octDown').onclick = () => { if (octave>1){ octave--; buildPads(); } };
+$('latch').onclick = () => {
+  latch = !latch; $('latch').classList.toggle('on', latch);
+  if (!latch) noteOff(); // выключили «держать» — отпускаем висящую ноту
+};
+
+const KEYMAP = { a:0, w:1, s:2, e:3, d:4, f:5, t:6, g:7, y:8, h:9, u:10, j:11, k:12 };
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (KEYMAP[k] !== undefined && !active && !e.repeat){
+    const semitone = KEYMAP[k]%12, oct = octave + Math.floor(KEYMAP[k]/12);
+    const midi = (oct+1)*12 + semitone;
+    noteOn(midiToFreq(midi), SEMI[semitone]+oct, null);
+  }
+});
+addEventListener('keyup', () => noteOff());
+
+function draw(){
+  requestAnimationFrame(draw);
+  if (!analyser) return;
+  analyser.getByteFrequencyData(specData);
+  timeAn.getByteTimeDomainData(waveData);
+  const w = canvas.width, h = canvas.height;
+  cctx.fillStyle = 'rgba(10,10,46,.18)'; cctx.fillRect(0,0,w,h);
+
+  const half = specData.length/2;
+  const bw = w/half;
+  for (let i=0;i<half;i++){
+    const bh = specData[i]/255*h*0.85;
+    const hue = (i/half*300+180)%360;
+    cctx.fillStyle = `hsl(${hue},100%,${45+specData[i]/255*25}%)`;
+    cctx.shadowBlur = 16; cctx.shadowColor = `hsl(${hue},100%,60%)`;
+    cctx.fillRect(i*bw, h-bh, bw-1, bh);
+  }
+  cctx.shadowBlur = 0;
+
+  cctx.strokeStyle = '#0ff'; cctx.lineWidth = 2; cctx.beginPath();
+  const sw = w/waveData.length; let x=0;
+  for (let i=0;i<waveData.length;i++){
+    const v = waveData[i]/128-1, y = h*0.4 + v*h*0.3;
+    i===0 ? cctx.moveTo(x,y) : cctx.lineTo(x,y); x += sw;
+  }
+  cctx.stroke();
+}
+
+document.querySelectorAll('input,select').forEach(el => el.addEventListener('input', updateAll));
+addEventListener('pointerdown', () => { if (audioCtx.state==='suspended') audioCtx.resume(); }, { once:true });
+
+setup(); buildPads(); draw();
+</script>
+</body>
+</html>
