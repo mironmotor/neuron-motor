@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>◉ Звуковая сигнатура · Max17</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { background:radial-gradient(circle at 50% -10%, #0c1830, #06080f 60%); color:#9fe7ff;
+    font-family:'Segoe UI',Arial,sans-serif; padding:16px; min-height:100vh; }
+  .wrap { max-width:520px; margin:0 auto; }
+  .head { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1a3550;
+    padding-bottom:10px; margin-bottom:14px; }
+  .head .t { font-size:.95rem; letter-spacing:.22em; text-transform:uppercase; color:#5fd3ff; }
+  h1 { font-size:1.5rem; text-align:center; color:#cdefff; }
+  p.sub { text-align:center; font-size:.82rem; color:#5b86a0; margin:6px 0 16px; }
+  .sig { display:block; margin:0 auto; border-radius:50%; border:1px solid #14304a;
+    background:radial-gradient(circle,#04121a,#070512); box-shadow:0 0 40px rgba(0,200,255,.16); }
+  button#mic { display:block; width:100%; max-width:300px; margin:16px auto 6px; padding:14px;
+    border:none; border-radius:40px; background:#27e0ff; color:#021018; font-weight:bold; font-size:1.05rem;
+    letter-spacing:.1em; cursor:pointer; transition:.2s; }
+  button#mic.on { background:#ff4d6d; color:#1a0008; }
+  #status { text-align:center; font-size:.8rem; color:#5b86a0; min-height:20px; margin-bottom:14px; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .st { background:rgba(40,224,255,.04); border:1px solid #14304a; border-radius:12px; padding:9px; text-align:center; }
+  .st .l { font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:#4b7a96; }
+  .st .v { font-size:1.3rem; font-weight:bold; color:#cdefff; }
+  .state { background:linear-gradient(120deg,#0a1622,#0d2436); border:1px solid #14304a; border-radius:14px;
+    padding:13px 16px; margin-bottom:12px; }
+  .state .l { font-size:.62rem; letter-spacing:.2em; text-transform:uppercase; color:#4b7a96; }
+  .state .v { font-size:1.5rem; font-weight:bold; color:#cdefff; margin-top:2px; min-height:1.4em; }
+  .state .warm { font-size:.72rem; color:#ffc04b; margin-top:3px; }
+  .bar { margin:9px 0; }
+  .bar .top { display:flex; justify-content:space-between; font-size:.68rem; letter-spacing:.1em;
+    text-transform:uppercase; color:#6b93ad; margin-bottom:4px; }
+  .bar .track { height:9px; border:1px solid #14304a; border-radius:6px; background:#040c14; overflow:hidden; }
+  .bar .fill { height:100%; width:0%; border-radius:6px; transition:width .15s; }
+  .fill.ar { background:linear-gradient(90deg,#0bf,#7ff); }
+  .fill.va { background:linear-gradient(90deg,#0c6,#5f9); }
+  .fill.te { background:linear-gradient(90deg,#f25,#fb4); }
+  .ctx { border:1px solid #122436; background:rgba(255,255,255,.02); border-radius:12px; padding:9px 12px; }
+  .ctx .l { font-size:.62rem; letter-spacing:.18em; text-transform:uppercase; color:#456; }
+  .ctx input { width:100%; background:transparent; border:none; color:#9fc; font-size:.9rem; margin-top:3px; outline:none; }
+  .ctx input::placeholder { color:#345; }
+  .foot { margin-top:14px; text-align:center; }
+  .foot a { color:#456b82; font-size:.8rem; text-decoration:none; margin:0 8px; } .foot a:hover{color:#5fd3ff;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><span class="t">◉ Звуковая сигнатура</span><span class="t" style="color:#456">Max17</span></div>
+  <h1>Голос → состояние</h1>
+  <p class="sub">Max17 читает твоё состояние по голосу, помнит твою норму и связывает с темой разговора. Всё локально в браузере.</p>
+
+  <canvas id="sig" class="sig" width="300" height="300"></canvas>
+  <button id="mic">🎙 Слушать</button>
+  <div id="status">Нажми «Слушать» и разреши доступ к микрофону</div>
+
+  <div class="stats">
+    <div class="st"><div class="l">Тон</div><div class="v" id="f0">—</div></div>
+    <div class="st"><div class="l">Нота</div><div class="v" id="note">—</div></div>
+    <div class="st"><div class="l">Регистр</div><div class="v" id="reg">—</div></div>
+  </div>
+
+  <div class="state">
+    <div class="l">Состояние человека по голосу</div>
+    <div class="v" id="label">—</div>
+    <div class="warm" id="warm"></div>
+  </div>
+
+  <div class="bar"><div class="top"><span>Возбуждение</span><span id="arv">0%</span></div><div class="track"><div class="fill ar" id="arf"></div></div></div>
+  <div class="bar"><div class="top"><span>Позитив</span><span id="vav">0%</span></div><div class="track"><div class="fill va" id="vaf"></div></div></div>
+  <div class="bar"><div class="top"><span>Напряжение</span><span id="tev">0%</span></div><div class="track"><div class="fill te" id="tef"></div></div></div>
+
+  <div class="ctx">
+    <div class="l" style="color:#456">Контекст разговора</div>
+    <input id="ctx" placeholder="о чём говоришь? (влияет на оценку)" />
+  </div>
+
+  <div class="foot">
+    <a href="decoder.html">🧬 Декодер</a>
+    <a href="studio.html">🌸 Studio</a>
+    <a href="../">↑ Оригинал</a>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const noteOf=f=>{if(f<=0)return'—';const n=Math.round(12*Math.log2(f/440)+69);return NOTES[((n%12)+12)%12]+(Math.floor(n/12)-1);};
+const clamp=(v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,v));
+
+// --- персональная база голоса (как в ядре Max17), хранится в браузере ---
+const ALPHA=0.05, WARMUP=8;
+const PROFILE_KEY='max17_voice_profile';
+function loadProfile(){ try{return JSON.parse(localStorage.getItem(PROFILE_KEY))||null;}catch(e){return null;} }
+function saveProfile(p){ localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
+function updateProfile(ac){
+  let p=loadProfile();
+  if(!p){ p={obs:1,f0:ac.f0,register:ac.register,brightness:ac.brightness,jitter:ac.jitter,energy:ac.energy}; saveProfile(p); return p; }
+  const a=ALPHA;
+  p={obs:p.obs+1,
+     f0:p.f0*(1-a)+ac.f0*a, register:p.register*(1-a)+ac.register*a,
+     brightness:p.brightness*(1-a)+ac.brightness*a, jitter:p.jitter*(1-a)+ac.jitter*a,
+     energy:p.energy*(1-a)+ac.energy*a};
+  saveProfile(p); return p;
+}
+
+const NEG=['не могу','опять','бесит','проблема','ошибка','плохо','устал','злюсь','достало','тревож','страшно','паника','не работает'];
+const POS=['круто','класс','отлично','супер','получилось','спасибо','рад','люблю','кайф','красиво','работает','вектор'];
+function contextBias(t){ if(!t)return 0; const l=t.toLowerCase(); let s=0; NEG.forEach(c=>{if(l.includes(c))s--;}); POS.forEach(c=>{if(l.includes(c))s++;}); return clamp(s*0.07,-0.2,0.2); }
+
+function analyze(ac, ctx){
+  const p=loadProfile(); const obs=p?p.obs:0; const warming=obs<WARMUP;
+  let dev={f0:0,jitter:0,energy:0};
+  if(p&&obs>0){ const base=p.f0||ac.f0||1;
+    dev={f0:clamp((ac.f0-p.f0)/Math.max(40,base*0.4),-1,1), jitter:clamp(ac.jitter-p.jitter,-1,1), energy:clamp(ac.energy-p.energy,-1,1)}; }
+  if(!ac.voiced) return {arousal:0,valence:0.5,tension:0,label:'🔇 тишина / не голос',warming,obs,dev};
+  let arousal=0.4*ac.register+0.3*ac.brightness+0.3*ac.energy;
+  if(!warming){ arousal+=0.35*Math.max(0,dev.f0)+0.15*Math.max(0,dev.energy); }
+  arousal=clamp(arousal);
+  let tension=0.55*ac.jitter+0.25*ac.register+0.20*ac.energy;
+  if(!warming){ tension+=0.3*Math.max(0,dev.jitter)+0.2*Math.max(0,dev.f0); }
+  tension=clamp(tension);
+  let valence=0.5+0.25*(ac.brightness-0.5)-0.4*ac.jitter-0.25*(tension-0.5)+contextBias(ctx);
+  valence=clamp(valence);
+  return {arousal,valence,tension,label:labelOf(arousal,valence,tension),warming,obs,dev};
+}
+function labelOf(a,v,t){
+  if(t>0.66)return'😬 напряжённый, на взводе';
+  if(a>0.66&&v>0.55)return'🤩 воодушевлён, энергичен';
+  if(a>0.6&&v<=0.45)return'😤 взволнован, на эмоциях';
+  if(a<0.35&&v>=0.5)return'😌 спокоен, расслаблен';
+  if(a<0.35&&v<0.45)return'😔 тихий, подавленный';
+  if(v>0.6)return'🙂 ровный, позитивный';
+  return'😐 нейтральный';
+}
+
+let actx,stream,analyser,pitch,freq,pbuf,binHz,raf,running=false,f0s=0,lastF0=0,lastUpd=0;
+const tv=new Array(50).fill(0);
+const cv=$('sig'), g=cv.getContext('2d');
+
+function detectPitch(buf,sr){
+  const N=buf.length; let rms=0; for(let i=0;i<N;i++)rms+=buf[i]*buf[i]; rms=Math.sqrt(rms/N);
+  if(rms<0.008)return{f:-1,rms};
+  const minLag=Math.max(2,Math.floor(sr/1000)),maxLag=Math.min(N-2,Math.floor(sr/70));
+  let c0=0; for(let i=0;i<N;i++)c0+=buf[i]*buf[i];
+  const corr=new Float32Array(maxLag+1); let best=-1,bestC=0;
+  for(let lag=minLag;lag<=maxLag;lag++){let s=0;for(let i=0;i<N-lag;i++)s+=buf[i]*buf[i+lag];const c=s/c0;corr[lag]=c;if(c>bestC){bestC=c;best=lag;}}
+  if(best<0||bestC<0.45)return{f:-1,rms};
+  let lag=best;const a=corr[best-1],b=corr[best],cc=corr[best+1],d=a+cc-2*b; if(d!==0)lag=best-0.5*(cc-a)/d;
+  return{f:sr/lag,rms};
+}
+
+$('mic').addEventListener('click', async ()=>{
+  if(running){ stop(); return; }
+  $('status').textContent='Запрашиваю доступ к микрофону…';
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    actx=new (window.AudioContext||window.webkitAudioContext)(); await actx.resume();
+    const src=actx.createMediaStreamSource(stream);
+    analyser=actx.createAnalyser(); analyser.fftSize=4096; analyser.smoothingTimeConstant=0.7;
+    pitch=actx.createAnalyser(); pitch.fftSize=2048;
+    src.connect(analyser); src.connect(pitch);
+    freq=new Uint8Array(analyser.frequencyBinCount); pbuf=new Float32Array(2048); binHz=actx.sampleRate/4096; f0s=0;
+    running=true; $('mic').textContent='⏹ Остановить'; $('mic').classList.add('on');
+    $('status').textContent='✅ Слушаю — говори';
+    loop();
+  }catch(e){ $('status').textContent='Ошибка микрофона: '+(e.message||e); }
+});
+function stop(){ if(raf)cancelAnimationFrame(raf); if(stream)stream.getTracks().forEach(t=>t.stop()); if(actx)actx.close();
+  running=false; $('mic').textContent='🎙 Слушать'; $('mic').classList.remove('on'); $('status').textContent='Остановлено'; }
+
+function loop(){
+  if(!running)return;
+  analyser.getByteFrequencyData(freq); pitch.getFloatTimeDomainData(pbuf);
+  const p=detectPitch(pbuf,actx.sampleRate); const voiced=p.f>=65&&p.f<=1200;
+  if(voiced)f0s=f0s?f0s*0.7+p.f*0.3:p.f; const F0=voiced?f0s:0;
+  let loE=0,hiE=0,cN=0,cD=0;
+  for(let i=1;i<freq.length;i++){const f=i*binHz,v=freq[i];cN+=f*v;cD+=v;if(f>=80&&f<=400)loE+=v;if(f>=2000&&f<=8000)hiE+=v;}
+  const centroid=cD>0?cN/cD:70;
+  const brightness=clamp((Math.log(Math.max(centroid,100))-Math.log(200))/(Math.log(5000)-Math.log(200)));
+  const energy=clamp((loE+hiE)/12000);
+  const register=F0?clamp((Math.log(F0)-Math.log(70))/(Math.log(1000)-Math.log(70))):0;
+  let jitter=0; if(F0&&lastF0)jitter=clamp(Math.abs(F0-lastF0)/12); if(F0)lastF0=F0;
+  for(let i=0;i<50;i++){const tf=65.4064*Math.pow(2,i/12);const bin=Math.round(tf/binHz);let peak=0;
+    for(let b=Math.max(1,bin-1);b<=Math.min(freq.length-1,bin+1);b++)if(freq[b]>peak)peak=freq[b];
+    const lvl=peak/255; tv[i]=lvl>tv[i]?lvl:tv[i]*0.85+lvl*0.15;}
+  const ac={f0:F0,register,brightness,jitter,energy,voiced};
+
+  $('f0').textContent=F0?Math.round(F0):'—';
+  $('note').textContent=F0?noteOf(F0):'—';
+  $('reg').textContent=F0?Math.round(register*100)+'%':'—';
+
+  // считаем состояние и раз в ~1.4с дописываем профиль (учим норму)
+  const now=performance.now();
+  const st=analyze(ac,$('ctx').value);
+  $('label').textContent=running?st.label:'—';
+  $('warm').textContent=st.warming?('учу твой голос ('+st.obs+' набл.) — строю норму'):'';
+  setBar('ar',st.arousal); setBar('va',st.valence); setBar('te',st.tension);
+  if(voiced&&now-lastUpd>1400){ lastUpd=now; updateProfile(ac); }
+
+  draw(F0);
+  raf=requestAnimationFrame(loop);
+}
+function setBar(k,v){ const p=Math.round((v||0)*100); $(k+'f').style.width=p+'%'; $(k+'v').textContent=p+'%'; }
+
+function draw(F0){
+  const W=cv.width,H=cv.height,cx=W/2,cy=H/2,innerR=46,maxLen=Math.min(W,H)/2-innerR-18;
+  g.clearRect(0,0,W,H);
+  const harm=new Set(); if(F0)for(let k=1;k<=12;k++){const idx=Math.round(12*Math.log2((F0*k)/65.4064));if(idx>=0&&idx<50)harm.add(idx);}
+  let level=0; for(let i=0;i<50;i++)level+=tv[i]; level=clamp(level/14);
+  const coreHue=F0?180+clamp((Math.log(F0)-Math.log(70))/(Math.log(1000)-Math.log(70)))*120:190;
+  const cg=g.createRadialGradient(cx,cy,2,cx,cy,innerR*(0.8+level));
+  cg.addColorStop(0,`hsla(${coreHue},100%,70%,.9)`); cg.addColorStop(1,`hsla(${coreHue},100%,45%,0)`);
+  g.fillStyle=cg; g.beginPath(); g.arc(cx,cy,innerR*(0.8+level),0,Math.PI*2); g.fill();
+  for(let i=0;i<50;i++){
+    const v=tv[i],ang=-Math.PI/2+(i/50)*Math.PI*2,len=v*maxLen,ca=Math.cos(ang),sa=Math.sin(ang);
+    const x1=cx+ca*innerR,y1=cy+sa*innerR,x2=cx+ca*(innerR+len),y2=cy+sa*(innerR+len);
+    const hue=190-(i/50)*70,isH=harm.has(i);
+    g.lineCap='round'; g.lineWidth=isH?5:3; g.strokeStyle=`hsl(${hue},100%,${50+v*30}%)`;
+    g.shadowBlur=isH?14:(v>0.3?8:0); g.shadowColor=`hsl(${hue},100%,60%)`;
+    g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke();
+  }
+  g.shadowBlur=0;
+}
+</script>
+</body>
+</html>
