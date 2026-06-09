@@ -183,6 +183,11 @@ function labelOf(a,v,t,f){
 // ===== аудио и признаки =====
 let actx,stream,analyser,pitch,freq,floatFreq,pbuf,binHz,SR,raf,running=false;
 let f0s=0,lastF0=0,lastUpd=0,lastAmp=0;
+// сглаживание состояния + удержание вердикта (чтобы не дёргался)
+let smAr=0, smVa=0.5, smTe=0, smInit=false;
+let shownLabel='—', shownDesc='', lastLabelChange=0;
+const STATE_HOLD_MS=5000;   // вердикт держится минимум 5 секунд
+const SMOOTH=0.06;          // скорость «дрейфа» метрик: меньше = ровнее
 const tv=new Array(60).fill(0);            // 60 обертонов для богатой картинки
 const f0Hist=[], ampHist=[], jitHist=[], shiHist=[], onsetHist=[];
 const cv=$('sig'), g=cv.getContext('2d');
@@ -239,6 +244,7 @@ $('mic').addEventListener('click', async ()=>{
     floatFreq=new Float32Array(analyser.frequencyBinCount);
     pbuf=new Float32Array(2048); binHz=SR/4096; f0s=0;
     f0Hist.length=ampHist.length=jitHist.length=shiHist.length=onsetHist.length=0;
+    smInit=false; smAr=0; smVa=0.5; smTe=0; shownLabel='—'; shownDesc=''; lastLabelChange=0;
     running=true; $('mic').textContent='⏹ Остановить'; $('mic').classList.add('on');
     $('status').textContent='✅ Слушаю — говори ровно пару секунд';
     loop();
@@ -322,16 +328,28 @@ function loop(){
   $('bri').textContent=voiced?Math.round(brightness*100)+'%':'—';
   $('con').textContent=voiced?Math.round(constriction*100)+'%':'—';
 
-  // состояние
+  // состояние — со сглаживанием и удержанием, чтобы не дёргалось
   const now=performance.now();
   const st=analyze(feats,$('ctx').value);
-  $('label').textContent=running?st.label:'—';
-  $('desc').textContent=st.desc||'';
+
+  // плавный дрейф метрик (только пока есть голос; в тишине держим последнее)
+  if(voiced){
+    if(!smInit){ smAr=st.arousal; smVa=st.valence; smTe=st.tension; smInit=true; }
+    else { smAr+=(st.arousal-smAr)*SMOOTH; smVa+=(st.valence-smVa)*SMOOTH; smTe+=(st.tension-smTe)*SMOOTH; }
+  }
+
+  // вердикт по СГЛАЖЕННЫМ метрикам, и меняем его не чаще раза в 5 секунд
+  const smLabel=labelOf(smAr,smVa,smTe,feats);
+  if(shownLabel==='—' || (now-lastLabelChange>STATE_HOLD_MS && smLabel.label!==shownLabel)){
+    shownLabel=smLabel.label; shownDesc=smLabel.desc; lastLabelChange=now;
+  }
+  $('label').textContent=running?(smInit?shownLabel:'считываю…'):'—';
+  $('desc').textContent=shownDesc||'';
   $('warm').textContent=st.warming?('учу твой голос ('+st.obs+' набл.) — строю норму'):'';
-  setBar('ar',st.arousal); setBar('va',st.valence); setBar('te',st.tension);
+  setBar('ar',smAr); setBar('va',smVa); setBar('te',smTe);
   if(voiced&&now-lastUpd>1400){ lastUpd=now; updateProfile(feats); }
 
-  draw(feats,st);
+  draw(feats,{arousal:smAr,valence:smVa,tension:smTe});
   raf=requestAnimationFrame(loop);
 }
 function setBar(k,v){ const p=Math.round((v||0)*100); $(k+'f').style.width=p+'%'; $(k+'v').textContent=p+'%'; }
