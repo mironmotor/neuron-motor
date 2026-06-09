@@ -110,10 +110,12 @@ const noteOf=f=>{if(f<=0)return'—';const n=Math.round(12*Math.log2(f/440)+69);
 const clamp=(v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,v));
 const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:0;
 const std=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)*(x-m))));};
+// средний скачок между соседними кадрами — ловит тремор, а не интонацию
+const meanAbsDiff=a=>{if(a.length<2)return 0;let s=0;for(let i=1;i<a.length;i++)s+=Math.abs(a[i]-a[i-1]);return s/(a.length-1);};
 
 // ===== персональная база голоса (как в ядре Max17), хранится в браузере =====
 const ALPHA=0.05, WARMUP=8;
-const PROFILE_KEY='max17_voice_profile_v3';
+const PROFILE_KEY='max17_voice_profile_v4'; // v4: сброс старых завышенных норм
 function loadProfile(){ try{return JSON.parse(localStorage.getItem(PROFILE_KEY))||null;}catch(e){return null;} }
 function saveProfile(p){ localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
 function updateProfile(f){
@@ -151,13 +153,14 @@ function analyze(f, ctx){
   if(!warming) arousal+=0.30*Math.max(0,dev.f0)+0.12*Math.max(0,dev.energy);
   arousal=clamp(arousal);
 
-  // Напряжение: jitter/shimmer (дрожь) + зажатость горла + низкий HNR (хрип/придых)
-  let tension=0.32*f.jitter+0.22*f.shimmer+0.22*f.constriction+0.14*(1-f.hnrNorm)+0.10*f.register;
-  if(!warming) tension+=0.22*Math.max(0,dev.jitter)+0.18*Math.max(0,dev.constriction)+0.12*Math.max(0,-dev.hnr);
+  // Напряжение: тремор (jitter/shimmer) — главный сигнал; зажатость лишь добавка,
+  // т.к. до калибровки она нейтральна и зависит от гласных
+  let tension=0.38*f.jitter+0.25*f.shimmer+0.12*Math.max(0,f.constriction-0.3)+0.15*(1-f.hnrNorm)+0.10*f.register;
+  if(!warming) tension+=0.22*Math.max(0,dev.jitter)+0.14*Math.max(0,dev.constriction)+0.12*Math.max(0,-dev.hnr);
   tension=clamp(tension);
 
-  // Позитив: чистый ровный голос = плюс; дрожь, хрип, зажатость = минус; + контекст
-  let valence=0.5+0.22*(f.brightness-0.5)+0.18*(f.hnrNorm-0.5)-0.30*f.jitter-0.22*f.constriction-0.18*(tension-0.5)+contextBias(ctx);
+  // Позитив: чистый ровный голос = плюс; дрожь, хрип = минус; + контекст
+  let valence=0.5+0.22*(f.brightness-0.5)+0.18*(f.hnrNorm-0.5)-0.30*f.jitter-0.10*Math.max(0,f.constriction-0.3)-0.18*(tension-0.5)+contextBias(ctx);
   valence=clamp(valence);
 
   const {label,desc}=labelOf(arousal,valence,tension,f);
@@ -166,8 +169,8 @@ function analyze(f, ctx){
 
 function labelOf(a,v,t,f){
   // составной вердикт + краткое пояснение, что именно слышно
-  if(t>0.66 && f.constriction>0.55) return {label:'😬 зажатый, напряжённый',desc:'горло сжато, голос дрожит'};
-  if(t>0.66) return {label:'😬 напряжённый, на взводе',desc:'высокая дрожь голоса'};
+  if(t>0.7 && f.constriction>0.65) return {label:'😬 зажатый, напряжённый',desc:'горло сжато относительно твоей нормы, голос дрожит'};
+  if(t>0.7) return {label:'😬 напряжённый, на взводе',desc:'высокая дрожь голоса'};
   if(f.hnr<7 && a<0.4) return {label:'😮‍💨 усталый, глуховатый',desc:'много придыхания, мало тона'};
   if(a>0.66&&v>0.55) return {label:'🤩 воодушевлён, энергичен',desc:'яркий, открытый, быстрый'};
   if(a>0.6&&v<=0.45) return {label:'😤 взволнован, на эмоциях',desc:'высокий и резкий'};
@@ -276,15 +279,25 @@ function loop(){
   const onset = amp>lastAmp*1.35 && amp>0.01 ? 1 : 0; pushHist(onsetHist,onset); lastAmp=amp;
 
   const f0mean=mean(f0Hist)||1;
-  const jitter=clamp(std(f0Hist)/Math.max(8,f0mean*0.04));        // относительная дрожь высоты
+  // jitter: скачки высоты кадр-к-кадру (тремор), интонационные глиссандо не считаются
+  const jitter=clamp(meanAbsDiff(f0Hist)/Math.max(3,f0mean*0.04));
   const ampmean=mean(ampHist)||1e-6;
-  const shimmer=clamp(std(ampHist)/Math.max(0.01,ampmean*0.6));   // относительная дрожь силы
+  // shimmer: рваность громкости кадр-к-кадру, а не слоговая пульсация
+  const shimmer=clamp(meanAbsDiff(ampHist)/Math.max(0.008,ampmean*0.55));
   const f0var=clamp(std(f0Hist)/30);                              // вариативность интонации (живость)
   const rate=clamp(mean(onsetHist)*6);                            // темп речи 0..1
 
-  // форманты и зажатость горла (F1 низко + узкий = зажато)
+  // форманты; зажатость = просадка F1/F2 относительно ЛИЧНОЙ нормы.
+  // Абсолютные пороги нельзя: F1/F2 зависят от гласной («и»/«у» дают низкий F1
+  // и это не зажатость) — поэтому до калибровки держим нейтральные 0.3
   const {f1,f2}=findFormants(mag);
-  const constriction=clamp((1 - clamp((f1-300)/500)) * 0.6 + clamp((2200-f2)/1300)*0.4);
+  const profC=loadProfile();
+  let constriction=0.3;
+  if(profC&&profC.obs>=WARMUP&&profC.f1>0&&f1>0){
+    constriction=clamp(0.3
+      + ((profC.f1-f1)/Math.max(200,profC.f1*0.6))*0.5
+      + ((profC.f2-f2)/Math.max(500,profC.f2*0.5))*0.3);
+  }
 
   // HNR (чистота тона vs шум/придыхание)
   const hnr=computeHNR(mag,F0);
