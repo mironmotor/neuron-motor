@@ -3,32 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>◉ Звуковая сигнатура · Max17</title>
+<title>◉ Звуковая сигнатура v3 · Max17</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { background:radial-gradient(circle at 50% -10%, #0c1830, #06080f 60%); color:#9fe7ff;
     font-family:'Segoe UI',Arial,sans-serif; padding:16px; min-height:100vh; }
-  .wrap { max-width:520px; margin:0 auto; }
+  .wrap { max-width:560px; margin:0 auto; }
   .head { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1a3550;
     padding-bottom:10px; margin-bottom:14px; }
   .head .t { font-size:.95rem; letter-spacing:.22em; text-transform:uppercase; color:#5fd3ff; }
   h1 { font-size:1.5rem; text-align:center; color:#cdefff; }
   p.sub { text-align:center; font-size:.82rem; color:#5b86a0; margin:6px 0 16px; }
   .sig { display:block; margin:0 auto; border-radius:50%; border:1px solid #14304a;
-    background:radial-gradient(circle,#04121a,#070512); box-shadow:0 0 40px rgba(0,200,255,.16); }
+    background:radial-gradient(circle,#04121a,#070512); box-shadow:0 0 44px rgba(0,200,255,.18); }
   button#mic { display:block; width:100%; max-width:300px; margin:16px auto 6px; padding:14px;
     border:none; border-radius:40px; background:#27e0ff; color:#021018; font-weight:bold; font-size:1.05rem;
     letter-spacing:.1em; cursor:pointer; transition:.2s; }
   button#mic.on { background:#ff4d6d; color:#1a0008; }
   #status { text-align:center; font-size:.8rem; color:#5b86a0; min-height:20px; margin-bottom:14px; }
-  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
-  .st { background:rgba(40,224,255,.04); border:1px solid #14304a; border-radius:12px; padding:9px; text-align:center; }
-  .st .l { font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:#4b7a96; }
-  .st .v { font-size:1.3rem; font-weight:bold; color:#cdefff; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-bottom:12px; }
+  .st { background:rgba(40,224,255,.04); border:1px solid #14304a; border-radius:11px; padding:8px 4px; text-align:center; }
+  .st .l { font-size:.56rem; letter-spacing:.1em; text-transform:uppercase; color:#4b7a96; }
+  .st .v { font-size:1.05rem; font-weight:bold; color:#cdefff; }
   .state { background:linear-gradient(120deg,#0a1622,#0d2436); border:1px solid #14304a; border-radius:14px;
     padding:13px 16px; margin-bottom:12px; }
   .state .l { font-size:.62rem; letter-spacing:.2em; text-transform:uppercase; color:#4b7a96; }
   .state .v { font-size:1.5rem; font-weight:bold; color:#cdefff; margin-top:2px; min-height:1.4em; }
+  .state .desc { font-size:.78rem; color:#7fb0c8; margin-top:4px; }
   .state .warm { font-size:.72rem; color:#ffc04b; margin-top:3px; }
   .bar { margin:9px 0; }
   .bar .top { display:flex; justify-content:space-between; font-size:.68rem; letter-spacing:.1em;
@@ -38,6 +39,10 @@
   .fill.ar { background:linear-gradient(90deg,#0bf,#7ff); }
   .fill.va { background:linear-gradient(90deg,#0c6,#5f9); }
   .fill.te { background:linear-gradient(90deg,#f25,#fb4); }
+  details { border:1px solid #122436; border-radius:12px; margin-bottom:12px; background:rgba(255,255,255,.015); }
+  summary { padding:9px 12px; font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:#5b86a0; cursor:pointer; }
+  .micro { padding:0 12px 12px; display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+  .micro .st .l { color:#5577; }
   .ctx { border:1px solid #122436; background:rgba(255,255,255,.02); border-radius:12px; padding:9px 12px; }
   .ctx .l { font-size:.62rem; letter-spacing:.18em; text-transform:uppercase; color:#456; }
   .ctx input { width:100%; background:transparent; border:none; color:#9fc; font-size:.9rem; margin-top:3px; outline:none; }
@@ -48,23 +53,25 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="head"><span class="t">◉ Звуковая сигнатура</span><span class="t" style="color:#456">Max17</span></div>
+  <div class="head"><span class="t">◉ Звуковая сигнатура</span><span class="t" style="color:#456">Max17 · v3</span></div>
   <h1>Голос → состояние</h1>
-  <p class="sub">Max17 читает твоё состояние по голосу, помнит твою норму и связывает с темой разговора. Всё локально в браузере.</p>
+  <p class="sub">Max17 читает состояние по обертонам, формантам, дрожанию и динамике голоса. Помнит твою норму, связывает с темой. Всё локально.</p>
 
-  <canvas id="sig" class="sig" width="300" height="300"></canvas>
+  <canvas id="sig" class="sig" width="340" height="340"></canvas>
   <button id="mic">🎙 Слушать</button>
   <div id="status">Нажми «Слушать» и разреши доступ к микрофону</div>
 
   <div class="stats">
     <div class="st"><div class="l">Тон</div><div class="v" id="f0">—</div></div>
     <div class="st"><div class="l">Нота</div><div class="v" id="note">—</div></div>
-    <div class="st"><div class="l">Регистр</div><div class="v" id="reg">—</div></div>
+    <div class="st"><div class="l">F1</div><div class="v" id="fm1">—</div></div>
+    <div class="st"><div class="l">F2</div><div class="v" id="fm2">—</div></div>
   </div>
 
   <div class="state">
     <div class="l">Состояние человека по голосу</div>
     <div class="v" id="label">—</div>
+    <div class="desc" id="desc"></div>
     <div class="warm" id="warm"></div>
   </div>
 
@@ -72,8 +79,20 @@
   <div class="bar"><div class="top"><span>Позитив</span><span id="vav">0%</span></div><div class="track"><div class="fill va" id="vaf"></div></div></div>
   <div class="bar"><div class="top"><span>Напряжение</span><span id="tev">0%</span></div><div class="track"><div class="fill te" id="tef"></div></div></div>
 
+  <details>
+    <summary>▸ Микро-признаки голоса (как у речевого аналитика)</summary>
+    <div class="micro">
+      <div class="st"><div class="l">Jitter · дрожь высоты</div><div class="v" id="jit">—</div></div>
+      <div class="st"><div class="l">Shimmer · дрожь силы</div><div class="v" id="shi">—</div></div>
+      <div class="st"><div class="l">HNR · чистота</div><div class="v" id="hnr">—</div></div>
+      <div class="st"><div class="l">Темп речи</div><div class="v" id="rate">—</div></div>
+      <div class="st"><div class="l">Яркость</div><div class="v" id="bri">—</div></div>
+      <div class="st"><div class="l">Зажатость горла</div><div class="v" id="con">—</div></div>
+    </div>
+  </details>
+
   <div class="ctx">
-    <div class="l" style="color:#456">Контекст разговора</div>
+    <div class="l">Контекст разговора</div>
     <input id="ctx" placeholder="о чём говоришь? (влияет на оценку)" />
   </div>
 
@@ -89,67 +108,117 @@ const $ = id => document.getElementById(id);
 const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const noteOf=f=>{if(f<=0)return'—';const n=Math.round(12*Math.log2(f/440)+69);return NOTES[((n%12)+12)%12]+(Math.floor(n/12)-1);};
 const clamp=(v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,v));
+const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:0;
+const std=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)*(x-m))));};
 
-// --- персональная база голоса (как в ядре Max17), хранится в браузере ---
+// ===== персональная база голоса (как в ядре Max17), хранится в браузере =====
 const ALPHA=0.05, WARMUP=8;
-const PROFILE_KEY='max17_voice_profile';
+const PROFILE_KEY='max17_voice_profile_v3';
 function loadProfile(){ try{return JSON.parse(localStorage.getItem(PROFILE_KEY))||null;}catch(e){return null;} }
 function saveProfile(p){ localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
-function updateProfile(ac){
+function updateProfile(f){
   let p=loadProfile();
-  if(!p){ p={obs:1,f0:ac.f0,register:ac.register,brightness:ac.brightness,jitter:ac.jitter,energy:ac.energy}; saveProfile(p); return p; }
-  const a=ALPHA;
-  p={obs:p.obs+1,
-     f0:p.f0*(1-a)+ac.f0*a, register:p.register*(1-a)+ac.register*a,
-     brightness:p.brightness*(1-a)+ac.brightness*a, jitter:p.jitter*(1-a)+ac.jitter*a,
-     energy:p.energy*(1-a)+ac.energy*a};
-  saveProfile(p); return p;
+  const keys=['f0','register','brightness','jitter','shimmer','hnr','f1','f2','constriction'];
+  if(!p){ p={obs:1}; keys.forEach(k=>p[k]=f[k]); saveProfile(p); return p; }
+  const a=ALPHA, np={obs:p.obs+1};
+  keys.forEach(k=>np[k]=(p[k]??f[k])*(1-a)+f[k]*a);
+  saveProfile(np); return np;
 }
 
 const NEG=['не могу','опять','бесит','проблема','ошибка','плохо','устал','злюсь','достало','тревож','страшно','паника','не работает'];
 const POS=['круто','класс','отлично','супер','получилось','спасибо','рад','люблю','кайф','красиво','работает','вектор'];
 function contextBias(t){ if(!t)return 0; const l=t.toLowerCase(); let s=0; NEG.forEach(c=>{if(l.includes(c))s--;}); POS.forEach(c=>{if(l.includes(c))s++;}); return clamp(s*0.07,-0.2,0.2); }
 
-function analyze(ac, ctx){
+// ===== анализ состояния по богатому набору признаков =====
+function analyze(f, ctx){
   const p=loadProfile(); const obs=p?p.obs:0; const warming=obs<WARMUP;
-  let dev={f0:0,jitter:0,energy:0};
-  if(p&&obs>0){ const base=p.f0||ac.f0||1;
-    dev={f0:clamp((ac.f0-p.f0)/Math.max(40,base*0.4),-1,1), jitter:clamp(ac.jitter-p.jitter,-1,1), energy:clamp(ac.energy-p.energy,-1,1)}; }
-  if(!ac.voiced) return {arousal:0,valence:0.5,tension:0,label:'🔇 тишина / не голос',warming,obs,dev};
-  let arousal=0.4*ac.register+0.3*ac.brightness+0.3*ac.energy;
-  if(!warming){ arousal+=0.35*Math.max(0,dev.f0)+0.15*Math.max(0,dev.energy); }
+  let dev={};
+  if(p&&obs>0){
+    const base=p.f0||f.f0||1;
+    dev={
+      f0: clamp((f.f0-p.f0)/Math.max(40,base*0.4),-1,1),
+      jitter: clamp(f.jitter-(p.jitter||0),-1,1),
+      shimmer: clamp(f.shimmer-(p.shimmer||0),-1,1),
+      hnr: clamp((f.hnr-(p.hnr||0))/15,-1,1),       // выше HNR = чище
+      energy: clamp(f.energy-(p.energy||0),-1,1),
+      constriction: clamp(f.constriction-(p.constriction||0),-1,1),
+    };
+  }
+  if(!f.voiced) return {arousal:0,valence:0.5,tension:0,label:'🔇 тишина / не голос',desc:'',warming,obs,dev};
+
+  // Возбуждение: высота + яркость + энергия + темп речи; усилено личным ростом F0
+  let arousal=0.30*f.register+0.22*f.brightness+0.22*f.energy+0.16*f.rate+0.10*f.f0var;
+  if(!warming) arousal+=0.30*Math.max(0,dev.f0)+0.12*Math.max(0,dev.energy);
   arousal=clamp(arousal);
-  let tension=0.55*ac.jitter+0.25*ac.register+0.20*ac.energy;
-  if(!warming){ tension+=0.3*Math.max(0,dev.jitter)+0.2*Math.max(0,dev.f0); }
+
+  // Напряжение: jitter/shimmer (дрожь) + зажатость горла + низкий HNR (хрип/придых)
+  let tension=0.32*f.jitter+0.22*f.shimmer+0.22*f.constriction+0.14*(1-f.hnrNorm)+0.10*f.register;
+  if(!warming) tension+=0.22*Math.max(0,dev.jitter)+0.18*Math.max(0,dev.constriction)+0.12*Math.max(0,-dev.hnr);
   tension=clamp(tension);
-  let valence=0.5+0.25*(ac.brightness-0.5)-0.4*ac.jitter-0.25*(tension-0.5)+contextBias(ctx);
+
+  // Позитив: чистый ровный голос = плюс; дрожь, хрип, зажатость = минус; + контекст
+  let valence=0.5+0.22*(f.brightness-0.5)+0.18*(f.hnrNorm-0.5)-0.30*f.jitter-0.22*f.constriction-0.18*(tension-0.5)+contextBias(ctx);
   valence=clamp(valence);
-  return {arousal,valence,tension,label:labelOf(arousal,valence,tension),warming,obs,dev};
-}
-function labelOf(a,v,t){
-  if(t>0.66)return'😬 напряжённый, на взводе';
-  if(a>0.66&&v>0.55)return'🤩 воодушевлён, энергичен';
-  if(a>0.6&&v<=0.45)return'😤 взволнован, на эмоциях';
-  if(a<0.35&&v>=0.5)return'😌 спокоен, расслаблен';
-  if(a<0.35&&v<0.45)return'😔 тихий, подавленный';
-  if(v>0.6)return'🙂 ровный, позитивный';
-  return'😐 нейтральный';
+
+  const {label,desc}=labelOf(arousal,valence,tension,f);
+  return {arousal,valence,tension,label,desc,warming,obs,dev};
 }
 
-let actx,stream,analyser,pitch,freq,pbuf,binHz,raf,running=false,f0s=0,lastF0=0,lastUpd=0;
-const tv=new Array(50).fill(0);
+function labelOf(a,v,t,f){
+  // составной вердикт + краткое пояснение, что именно слышно
+  if(t>0.66 && f.constriction>0.55) return {label:'😬 зажатый, напряжённый',desc:'горло сжато, голос дрожит'};
+  if(t>0.66) return {label:'😬 напряжённый, на взводе',desc:'высокая дрожь голоса'};
+  if(f.hnr<7 && a<0.4) return {label:'😮‍💨 усталый, глуховатый',desc:'много придыхания, мало тона'};
+  if(a>0.66&&v>0.55) return {label:'🤩 воодушевлён, энергичен',desc:'яркий, открытый, быстрый'};
+  if(a>0.6&&v<=0.45) return {label:'😤 взволнован, на эмоциях',desc:'высокий и резкий'};
+  if(a<0.35&&v>=0.5) return {label:'😌 спокоен, расслаблен',desc:'ровный, чистый, низкий'};
+  if(a<0.35&&v<0.45) return {label:'😔 тихий, подавленный',desc:'медленный, тусклый'};
+  if(v>0.6) return {label:'🙂 ровный, позитивный',desc:'чистый и устойчивый'};
+  return {label:'😐 нейтральный',desc:''};
+}
+
+// ===== аудио и признаки =====
+let actx,stream,analyser,pitch,freq,floatFreq,pbuf,binHz,SR,raf,running=false;
+let f0s=0,lastF0=0,lastUpd=0,lastAmp=0;
+const tv=new Array(60).fill(0);            // 60 обертонов для богатой картинки
+const f0Hist=[], ampHist=[], jitHist=[], shiHist=[], onsetHist=[];
 const cv=$('sig'), g=cv.getContext('2d');
 
 function detectPitch(buf,sr){
   const N=buf.length; let rms=0; for(let i=0;i<N;i++)rms+=buf[i]*buf[i]; rms=Math.sqrt(rms/N);
-  if(rms<0.008)return{f:-1,rms};
+  if(rms<0.008)return{f:-1,rms,clarity:0};
   const minLag=Math.max(2,Math.floor(sr/1000)),maxLag=Math.min(N-2,Math.floor(sr/70));
   let c0=0; for(let i=0;i<N;i++)c0+=buf[i]*buf[i];
   const corr=new Float32Array(maxLag+1); let best=-1,bestC=0;
   for(let lag=minLag;lag<=maxLag;lag++){let s=0;for(let i=0;i<N-lag;i++)s+=buf[i]*buf[i+lag];const c=s/c0;corr[lag]=c;if(c>bestC){bestC=c;best=lag;}}
-  if(best<0||bestC<0.45)return{f:-1,rms};
+  if(best<0||bestC<0.45)return{f:-1,rms,clarity:bestC};
   let lag=best;const a=corr[best-1],b=corr[best],cc=corr[best+1],d=a+cc-2*b; if(d!==0)lag=best-0.5*(cc-a)/d;
-  return{f:sr/lag,rms};
+  return{f:sr/lag,rms,clarity:bestC};
+}
+
+// Форманты: ищем 2 крупных пика спектральной огибающей в диапазонах F1(250-900) и F2(900-2800)
+function findFormants(mag){
+  function peakIn(loHz,hiHz){
+    let lo=Math.max(1,Math.floor(loHz/binHz)), hi=Math.min(mag.length-2,Math.ceil(hiHz/binHz));
+    // сглаживаем огибающую
+    let bestB=-1,bestV=-1;
+    for(let i=lo;i<=hi;i++){ const v=(mag[i-1]+mag[i]+mag[i+1])/3; if(v>bestV){bestV=v;bestB=i;} }
+    return bestB>0?bestB*binHz:0;
+  }
+  return { f1:peakIn(250,900), f2:peakIn(900,2800) };
+}
+
+// HNR: отношение энергии в узких зонах вокруг гармоник F0 к остальной (шум)
+function computeHNR(mag,F0){
+  if(!F0)return 0;
+  let harm=0,noise=0;
+  for(let i=1;i<mag.length;i++){
+    const f=i*binHz, e=mag[i]*mag[i];
+    const nearest=Math.round(f/F0)*F0;
+    if(nearest>0 && Math.abs(f-nearest)<F0*0.12) harm+=e; else noise+=e;
+  }
+  if(noise<=0)return 30;
+  return clamp(10*Math.log10(harm/noise), -5, 30);
 }
 
 $('mic').addEventListener('click', async ()=>{
@@ -158,71 +227,141 @@ $('mic').addEventListener('click', async ()=>{
   try{
     stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     actx=new (window.AudioContext||window.webkitAudioContext)(); await actx.resume();
+    SR=actx.sampleRate;
     const src=actx.createMediaStreamSource(stream);
-    analyser=actx.createAnalyser(); analyser.fftSize=4096; analyser.smoothingTimeConstant=0.7;
+    analyser=actx.createAnalyser(); analyser.fftSize=4096; analyser.smoothingTimeConstant=0.6;
     pitch=actx.createAnalyser(); pitch.fftSize=2048;
     src.connect(analyser); src.connect(pitch);
-    freq=new Uint8Array(analyser.frequencyBinCount); pbuf=new Float32Array(2048); binHz=actx.sampleRate/4096; f0s=0;
+    freq=new Uint8Array(analyser.frequencyBinCount);
+    floatFreq=new Float32Array(analyser.frequencyBinCount);
+    pbuf=new Float32Array(2048); binHz=SR/4096; f0s=0;
+    f0Hist.length=ampHist.length=jitHist.length=shiHist.length=onsetHist.length=0;
     running=true; $('mic').textContent='⏹ Остановить'; $('mic').classList.add('on');
-    $('status').textContent='✅ Слушаю — говори';
+    $('status').textContent='✅ Слушаю — говори ровно пару секунд';
     loop();
   }catch(e){ $('status').textContent='Ошибка микрофона: '+(e.message||e); }
 });
 function stop(){ if(raf)cancelAnimationFrame(raf); if(stream)stream.getTracks().forEach(t=>t.stop()); if(actx)actx.close();
   running=false; $('mic').textContent='🎙 Слушать'; $('mic').classList.remove('on'); $('status').textContent='Остановлено'; }
 
+const HMAX=45; // длина окна истории (~0.75с при 60fps)
+function pushHist(arr,v){ arr.push(v); if(arr.length>HMAX)arr.shift(); }
+
 function loop(){
   if(!running)return;
-  analyser.getByteFrequencyData(freq); pitch.getFloatTimeDomainData(pbuf);
-  const p=detectPitch(pbuf,actx.sampleRate); const voiced=p.f>=65&&p.f<=1200;
+  analyser.getByteFrequencyData(freq);
+  analyser.getFloatFrequencyData(floatFreq);
+  pitch.getFloatTimeDomainData(pbuf);
+
+  // magnitude (линейная) из dB
+  const mag=new Float32Array(freq.length);
+  for(let i=0;i<freq.length;i++){ mag[i]=Math.pow(10, floatFreq[i]/20); }
+
+  const p=detectPitch(pbuf,SR); const voiced=p.f>=65&&p.f<=1200;
   if(voiced)f0s=f0s?f0s*0.7+p.f*0.3:p.f; const F0=voiced?f0s:0;
+
+  // громкость (амплитуда)
+  let amp=0; for(let i=0;i<pbuf.length;i++)amp+=pbuf[i]*pbuf[i]; amp=Math.sqrt(amp/pbuf.length);
+
+  // спектральные суммы
   let loE=0,hiE=0,cN=0,cD=0;
   for(let i=1;i<freq.length;i++){const f=i*binHz,v=freq[i];cN+=f*v;cD+=v;if(f>=80&&f<=400)loE+=v;if(f>=2000&&f<=8000)hiE+=v;}
   const centroid=cD>0?cN/cD:70;
   const brightness=clamp((Math.log(Math.max(centroid,100))-Math.log(200))/(Math.log(5000)-Math.log(200)));
   const energy=clamp((loE+hiE)/12000);
   const register=F0?clamp((Math.log(F0)-Math.log(70))/(Math.log(1000)-Math.log(70))):0;
-  let jitter=0; if(F0&&lastF0)jitter=clamp(Math.abs(F0-lastF0)/12); if(F0)lastF0=F0;
-  for(let i=0;i<50;i++){const tf=65.4064*Math.pow(2,i/12);const bin=Math.round(tf/binHz);let peak=0;
+
+  // динамика по окну: jitter (дрожь F0), shimmer (дрожь амплитуды), темп речи (онсеты)
+  if(voiced){ pushHist(f0Hist,F0); pushHist(ampHist,amp); }
+  const onset = amp>lastAmp*1.35 && amp>0.01 ? 1 : 0; pushHist(onsetHist,onset); lastAmp=amp;
+
+  const f0mean=mean(f0Hist)||1;
+  const jitter=clamp(std(f0Hist)/Math.max(8,f0mean*0.04));        // относительная дрожь высоты
+  const ampmean=mean(ampHist)||1e-6;
+  const shimmer=clamp(std(ampHist)/Math.max(0.01,ampmean*0.6));   // относительная дрожь силы
+  const f0var=clamp(std(f0Hist)/30);                              // вариативность интонации (живость)
+  const rate=clamp(mean(onsetHist)*6);                            // темп речи 0..1
+
+  // форманты и зажатость горла (F1 низко + узкий = зажато)
+  const {f1,f2}=findFormants(mag);
+  const constriction=clamp((1 - clamp((f1-300)/500)) * 0.6 + clamp((2200-f2)/1300)*0.4);
+
+  // HNR (чистота тона vs шум/придыхание)
+  const hnr=computeHNR(mag,F0);
+  const hnrNorm=clamp((hnr+5)/35);
+
+  // обертоны для картинки (60 тонов от C2)
+  for(let i=0;i<60;i++){const tf=65.4064*Math.pow(2,i/12);const bin=Math.round(tf/binHz);let peak=0;
     for(let b=Math.max(1,bin-1);b<=Math.min(freq.length-1,bin+1);b++)if(freq[b]>peak)peak=freq[b];
     const lvl=peak/255; tv[i]=lvl>tv[i]?lvl:tv[i]*0.85+lvl*0.15;}
-  const ac={f0:F0,register,brightness,jitter,energy,voiced};
 
+  const feats={f0:F0,register,brightness,energy,jitter,shimmer,f0var,rate,f1,f2,constriction,hnr,hnrNorm,voiced};
+
+  // вывод акустики
   $('f0').textContent=F0?Math.round(F0):'—';
   $('note').textContent=F0?noteOf(F0):'—';
-  $('reg').textContent=F0?Math.round(register*100)+'%':'—';
+  $('fm1').textContent=f1?Math.round(f1):'—';
+  $('fm2').textContent=f2?Math.round(f2):'—';
+  $('jit').textContent=voiced?Math.round(jitter*100)+'%':'—';
+  $('shi').textContent=voiced?Math.round(shimmer*100)+'%':'—';
+  $('hnr').textContent=voiced?Math.round(hnr)+' дБ':'—';
+  $('rate').textContent=voiced?Math.round(rate*100)+'%':'—';
+  $('bri').textContent=voiced?Math.round(brightness*100)+'%':'—';
+  $('con').textContent=voiced?Math.round(constriction*100)+'%':'—';
 
-  // считаем состояние и раз в ~1.4с дописываем профиль (учим норму)
+  // состояние
   const now=performance.now();
-  const st=analyze(ac,$('ctx').value);
+  const st=analyze(feats,$('ctx').value);
   $('label').textContent=running?st.label:'—';
+  $('desc').textContent=st.desc||'';
   $('warm').textContent=st.warming?('учу твой голос ('+st.obs+' набл.) — строю норму'):'';
   setBar('ar',st.arousal); setBar('va',st.valence); setBar('te',st.tension);
-  if(voiced&&now-lastUpd>1400){ lastUpd=now; updateProfile(ac); }
+  if(voiced&&now-lastUpd>1400){ lastUpd=now; updateProfile(feats); }
 
-  draw(F0);
+  draw(feats,st);
   raf=requestAnimationFrame(loop);
 }
 function setBar(k,v){ const p=Math.round((v||0)*100); $(k+'f').style.width=p+'%'; $(k+'v').textContent=p+'%'; }
 
-function draw(F0){
-  const W=cv.width,H=cv.height,cx=W/2,cy=H/2,innerR=46,maxLen=Math.min(W,H)/2-innerR-18;
+// ===== визуализация: обертоны-лучи + кольца формант + цвет от состояния =====
+function draw(f,st){
+  const W=cv.width,H=cv.height,cx=W/2,cy=H/2,innerR=50,maxLen=Math.min(W,H)/2-innerR-22;
   g.clearRect(0,0,W,H);
-  const harm=new Set(); if(F0)for(let k=1;k<=12;k++){const idx=Math.round(12*Math.log2((F0*k)/65.4064));if(idx>=0&&idx<50)harm.add(idx);}
-  let level=0; for(let i=0;i<50;i++)level+=tv[i]; level=clamp(level/14);
-  const coreHue=F0?180+clamp((Math.log(F0)-Math.log(70))/(Math.log(1000)-Math.log(70)))*120:190;
+  const F0=f.f0;
+  const harm=new Set(); if(F0)for(let k=1;k<=16;k++){const idx=Math.round(12*Math.log2((F0*k)/65.4064));if(idx>=0&&idx<60)harm.add(idx);}
+
+  // цвет ядра от валентности/напряжения: спокойный-зелёный, напряжённый-красный
+  const stateHue = 140 - st.tension*140 + st.valence*40;
+  let level=0; for(let i=0;i<60;i++)level+=tv[i]; level=clamp(level/16);
   const cg=g.createRadialGradient(cx,cy,2,cx,cy,innerR*(0.8+level));
-  cg.addColorStop(0,`hsla(${coreHue},100%,70%,.9)`); cg.addColorStop(1,`hsla(${coreHue},100%,45%,0)`);
+  cg.addColorStop(0,`hsla(${stateHue},90%,68%,.92)`); cg.addColorStop(1,`hsla(${stateHue},90%,42%,0)`);
   g.fillStyle=cg; g.beginPath(); g.arc(cx,cy,innerR*(0.8+level),0,Math.PI*2); g.fill();
-  for(let i=0;i<50;i++){
-    const v=tv[i],ang=-Math.PI/2+(i/50)*Math.PI*2,len=v*maxLen,ca=Math.cos(ang),sa=Math.sin(ang);
+
+  // кольца формант F1/F2 — «форма голосового тракта»
+  [['f1',f.f1,2800,'rgba(120,220,255,'],['f2',f.f2,2800,'rgba(255,180,120,']].forEach(([_,fv,fmax,col])=>{
+    if(!fv)return; const r=innerR+ (clamp(fv/fmax))*maxLen;
+    g.strokeStyle=col+'0.35)'; g.lineWidth=1.5; g.setLineDash([4,6]);
+    g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); g.stroke(); g.setLineDash([]);
+  });
+
+  // лучи-обертоны
+  for(let i=0;i<60;i++){
+    const v=tv[i],ang=-Math.PI/2+(i/60)*Math.PI*2,len=v*maxLen,ca=Math.cos(ang),sa=Math.sin(ang);
     const x1=cx+ca*innerR,y1=cy+sa*innerR,x2=cx+ca*(innerR+len),y2=cy+sa*(innerR+len);
-    const hue=190-(i/50)*70,isH=harm.has(i);
-    g.lineCap='round'; g.lineWidth=isH?5:3; g.strokeStyle=`hsl(${hue},100%,${50+v*30}%)`;
+    const hue=200-(i/60)*80,isH=harm.has(i);
+    g.lineCap='round'; g.lineWidth=isH?5:2.5; g.strokeStyle=`hsl(${hue},100%,${50+v*30}%)`;
     g.shadowBlur=isH?14:(v>0.3?8:0); g.shadowColor=`hsl(${hue},100%,60%)`;
     g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke();
+    if(isH&&len>6){ g.shadowBlur=0; g.fillStyle='rgba(255,255,255,.85)'; g.beginPath(); g.arc(x2,y2,2.5,0,Math.PI*2); g.fill(); }
   }
+  // внешнее кольцо дрожания (jitter) — пульсирует тем сильнее, чем больше напряжение
   g.shadowBlur=0;
+  const jr=innerR+maxLen+8, seg=72;
+  g.strokeStyle=`hsla(${10+(1-st.tension)*40},90%,60%,${0.25+st.tension*0.5})`; g.lineWidth=2;
+  g.beginPath();
+  for(let i=0;i<=seg;i++){ const a=(i/seg)*Math.PI*2; const wob=Math.sin(a*8+performance.now()/120)*f.jitter*10;
+    const r=jr+wob; const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r; i?g.lineTo(x,y):g.moveTo(x,y); }
+  g.stroke();
 }
 </script>
 </body>
