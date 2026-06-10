@@ -25,12 +25,16 @@
   .st { background:rgba(40,224,255,.04); border:1px solid #14304a; border-radius:11px; padding:8px 4px; text-align:center; }
   .st .l { font-size:.56rem; letter-spacing:.1em; text-transform:uppercase; color:#4b7a96; }
   .st .v { font-size:1.05rem; font-weight:bold; color:#cdefff; }
-  .state { background:linear-gradient(120deg,#0a1622,#0d2436); border:1px solid #14304a; border-radius:14px;
-    padding:13px 16px; margin-bottom:12px; }
-  .state .l { font-size:.62rem; letter-spacing:.2em; text-transform:uppercase; color:#4b7a96; }
-  .state .v { font-size:1.5rem; font-weight:bold; color:#cdefff; margin-top:2px; min-height:1.4em; }
-  .state .desc { font-size:.78rem; color:#7fb0c8; margin-top:4px; }
-  .state .warm { font-size:.72rem; color:#ffc04b; margin-top:3px; }
+  .state { position:relative; overflow:hidden; background:linear-gradient(120deg,#0a1622,#0d2436); border:1px solid #14304a; border-radius:16px;
+    padding:16px 18px; margin-bottom:12px; transition:box-shadow .5s, border-color .5s; }
+  .state::before { content:''; position:absolute; inset:0; opacity:.5; pointer-events:none;
+    background:radial-gradient(120% 90% at 12% 0%, var(--mood,#1a3550) 0%, transparent 55%); transition:background .6s; }
+  .state .l { position:relative; font-size:.62rem; letter-spacing:.2em; text-transform:uppercase; color:#4b7a96; }
+  .state .v { position:relative; font-size:1.7rem; font-weight:800; color:#eaffff; margin-top:3px; min-height:1.4em; letter-spacing:.01em; }
+  .state .desc { position:relative; font-size:.8rem; color:#9fc8dc; margin-top:5px; }
+  .state .warm { position:relative; font-size:.72rem; color:#ffc04b; margin-top:4px; }
+  .state .meta { position:relative; display:flex; gap:14px; margin-top:9px; font-size:.66rem; color:#6b93ad; letter-spacing:.06em; }
+  .state .meta b { color:#bfe9ff; font-weight:700; }
   .bar { margin:9px 0; }
   .bar .top { display:flex; justify-content:space-between; font-size:.68rem; letter-spacing:.1em;
     text-transform:uppercase; color:#6b93ad; margin-bottom:4px; }
@@ -53,7 +57,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="head"><span class="t">◉ Звуковая сигнатура</span><span class="t" style="color:#456">Max17 · v3</span></div>
+  <div class="head"><span class="t">◉ Звуковая сигнатура</span><span class="t" style="color:#456">Max17 · v4</span></div>
   <h1>Голос → состояние</h1>
   <p class="sub">Max17 читает состояние по обертонам, формантам, дрожанию и динамике голоса. Помнит твою норму, связывает с темой. Всё локально.</p>
 
@@ -68,11 +72,15 @@
     <div class="st"><div class="l">F2</div><div class="v" id="fm2">—</div></div>
   </div>
 
-  <div class="state">
+  <div class="state" id="stateCard">
     <div class="l">Состояние человека по голосу</div>
     <div class="v" id="label">—</div>
     <div class="desc" id="desc"></div>
     <div class="warm" id="warm"></div>
+    <div class="meta">
+      <span>стабильность <b id="stab">—</b></span>
+      <span>тренд <b id="trend">—</b></span>
+    </div>
   </div>
 
   <div class="bar"><div class="top"><span>Возбуждение</span><span id="arv">0%</span></div><div class="track"><div class="fill ar" id="arf"></div></div></div>
@@ -97,6 +105,7 @@
   </div>
 
   <div class="foot">
+    <a href="#" id="resetBase">↺ сбросить норму голоса</a>
     <a href="decoder.html">🧬 Декодер</a>
     <a href="studio.html">🌸 Studio</a>
     <a href="../">↑ Оригинал</a>
@@ -188,6 +197,8 @@ let smAr=0, smVa=0.5, smTe=0, smInit=false;
 let shownLabel='—', shownDesc='', lastLabelChange=0;
 const STATE_HOLD_MS=5000;   // вердикт держится минимум 5 секунд
 const SMOOTH=0.06;          // скорость «дрейфа» метрик: меньше = ровнее
+const teTrend=[];           // история напряжения для тренда/стабильности (~5с)
+const TE_TREND_MAX=120;
 const tv=new Array(60).fill(0);            // 60 обертонов для богатой картинки
 const f0Hist=[], ampHist=[], jitHist=[], shiHist=[], onsetHist=[];
 const cv=$('sig'), g=cv.getContext('2d');
@@ -244,7 +255,7 @@ $('mic').addEventListener('click', async ()=>{
     floatFreq=new Float32Array(analyser.frequencyBinCount);
     pbuf=new Float32Array(2048); binHz=SR/4096; f0s=0;
     f0Hist.length=ampHist.length=jitHist.length=shiHist.length=onsetHist.length=0;
-    smInit=false; smAr=0; smVa=0.5; smTe=0; shownLabel='—'; shownDesc=''; lastLabelChange=0;
+    smInit=false; smAr=0; smVa=0.5; smTe=0; shownLabel='—'; shownDesc=''; lastLabelChange=0; teTrend.length=0;
     running=true; $('mic').textContent='⏹ Остановить'; $('mic').classList.add('on');
     $('status').textContent='✅ Слушаю — говори ровно пару секунд';
     loop();
@@ -349,6 +360,23 @@ function loop(){
   setBar('ar',smAr); setBar('va',smVa); setBar('te',smTe);
   if(voiced&&now-lastUpd>1400){ lastUpd=now; updateProfile(feats); }
 
+  // стабильность (насколько ровно держишь состояние) и тренд напряжения
+  if(voiced){ teTrend.push(smTe); if(teTrend.length>TE_TREND_MAX)teTrend.shift(); }
+  if(smInit && teTrend.length>10){
+    const stability=clamp(1-std(teTrend)*4);
+    const half=Math.floor(teTrend.length/2);
+    const d=mean(teTrend.slice(half))-mean(teTrend.slice(0,half));
+    $('stab').textContent = stability>0.7?'высокая':stability>0.4?'средняя':'низкая';
+    $('trend').textContent = d>0.05?'↑ растёт напряжение':d<-0.05?'↓ расслабляется':'→ ровно';
+  } else { $('stab').textContent='—'; $('trend').textContent='—'; }
+
+  // аура карточки по настроению (зелёный-спокойный → красный-напряжённый)
+  const moodHue=140-smTe*150+smVa*40;
+  const card=$('stateCard');
+  card.style.setProperty('--mood',`hsla(${moodHue},80%,45%,.5)`);
+  card.style.borderColor=`hsla(${moodHue},70%,45%,.5)`;
+  card.style.boxShadow=`0 0 ${10+smTe*34}px hsla(${moodHue},85%,50%,${0.12+smTe*0.25})`;
+
   draw(feats,{arousal:smAr,valence:smVa,tension:smTe});
   raf=requestAnimationFrame(loop);
 }
@@ -394,6 +422,13 @@ function draw(f,st){
     const r=jr+wob; const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r; i?g.lineTo(x,y):g.moveTo(x,y); }
   g.stroke();
 }
+
+// сброс накопленной нормы голоса (если профиль «уехал»)
+$('resetBase').addEventListener('click', e=>{
+  e.preventDefault();
+  localStorage.removeItem(PROFILE_KEY);
+  $('status').textContent='Норма голоса сброшена — поговори, чтобы откалибровать заново';
+});
 </script>
 </body>
 </html>
