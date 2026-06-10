@@ -7,17 +7,71 @@
  <link rel="stylesheet" href="style.css">
 </head>
 <body>
- <div class="container">
- <h1>🎤 Voice Decomposer</h1>
- <p>Разложение голоса на частоты и тоны в реальном времени</p>
-
- <button id="btn">▶ Запустить микрофон</button>
-
- <div id="status">Нажми кнопку и разреши доступ к микрофону</div>
-
- <canvas id="spectrum" width="1000" height="320"></canvas>
- <canvas id="spectrogram" width="1000" height="300"></canvas>
+ <main class="app">
+ <section class="hero">
+ <div>
+ <p class="eyebrow">Realtime voice spectrum</p>
+ <h1>Voice Decomposer</h1>
+ <p class="lead">Разложение голоса на музыкальные полосы, гармоники и акустическое состояние для Max17.</p>
  </div>
+
+ <button id="btn" class="mic-button" type="button">Запустить микрофон</button>
+ </section>
+
+ <section class="control-panel" aria-label="Управление анализатором">
+ <div class="mode-tabs" role="group" aria-label="Режим отображения">
+ <button class="mode-tab active" type="button" data-mode="all">Все тоны</button>
+ <button class="mode-tab" type="button" data-mode="solo">Один тон</button>
+ <button class="mode-tab" type="button" data-mode="harmonics">Гармоники</button>
+ <button class="mode-tab" type="button" data-mode="state">Состояние</button>
+ </div>
+
+ <div class="tone-picker">
+ <div class="tone-summary">
+ <span id="toneNumber">Тон 25</span>
+ <strong id="toneNote">B3</strong>
+ <span id="toneRange">238-260 Hz</span>
+ </div>
+
+ <label class="slider-wrap" for="toneSlider">
+ <span>Выбор тона</span>
+ <input id="toneSlider" type="range" min="1" max="50" value="25">
+ </label>
+
+ <div class="tone-grid" id="toneGrid" aria-label="50 тонов"></div>
+ </div>
+
+ <div class="level-card">
+ <span id="levelTitle">Активность выбранного тона</span>
+ <div class="level-shell">
+ <div id="toneLevel" class="level-fill"></div>
+ </div>
+ <strong id="tonePercent">0%</strong>
+ <small id="levelHint">энергия текущей полосы</small>
+ </div>
+ </section>
+
+ <div id="status" class="status">Нажми кнопку и разреши доступ к микрофону</div>
+ <output id="voiceStatePayload" class="telemetry-output" aria-hidden="true"></output>
+
+ <section class="visual-stack">
+ <article class="visual-block">
+ <div class="visual-head">
+ <h2>Спектр</h2>
+ <span id="spectrumLabel">50 тонов</span>
+ </div>
+ <canvas id="spectrum" width="1100" height="360"></canvas>
+ </article>
+
+ <article class="visual-block">
+ <div class="visual-head">
+ <h2>История</h2>
+ <span id="historyLabel">энергия по частотам</span>
+ </div>
+ <canvas id="spectrogram" width="1100" height="320"></canvas>
+ </article>
+ </section>
+ </main>
 
  <script src="script.js"></script>
 </body>

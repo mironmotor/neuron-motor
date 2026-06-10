@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Декодер обертонов голоса</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#06080c; color:#33d6ff; font-family:'Segoe UI',Arial,sans-serif; padding:18px; }
+  .wrap { max-width:980px; margin:0 auto; }
+  h1 { font-size:1.9rem; text-align:center; }
+  p.sub { text-align:center; opacity:.8; margin:6px 0 14px; font-size:.95rem; }
+  .controls { display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-bottom:10px; }
+  button.big { font-size:1.1rem; padding:13px 28px; background:#0bf; color:#001018; border:none; border-radius:50px; font-weight:bold; cursor:pointer; transition:.2s; }
+  button.big:hover { filter:brightness(1.15); transform:scale(1.03); }
+  button.big.active { background:#ffb000; color:#1a1200; }
+  button#recBtn.rec { background:#ff4444; color:#1a0000; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,.5);} 50%{box-shadow:0 0 0 9px rgba(255,68,68,0);} }
+  button.ghost { font-size:.9rem; padding:11px 18px; background:#0c141c; color:#33d6ff; border:1px solid #16323f; border-radius:50px; font-weight:bold; cursor:pointer; }
+  button.ghost.active { background:#ff5c8a; color:#1a0008; border-color:#ff9bbb; }
+  .volrow { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border:1px solid #16323f; border-radius:50px; background:#0c141c; font-size:.8rem; color:#5b86a0; }
+  .volrow input { width:110px; accent-color:#33d6ff; }
+  #status { text-align:center; min-height:24px; margin:8px 0 14px; font-size:1.02rem; }
+
+  #player { display:none; }
+  .stage { display:grid; grid-template-columns:78px 1fr; gap:14px; align-items:stretch; }
+  .sliderbox { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .sliderbox .top, .sliderbox .bot { font-size:.7rem; color:#5b86a0; text-align:center; }
+  input.vert { writing-mode:vertical-lr; direction:rtl; width:34px; flex:1; accent-color:#33d6ff; cursor:pointer; }
+  .specwrap { position:relative; }
+  canvas#spec { width:100%; display:block; background:#000; border:1px solid #16323f; border-radius:12px; }
+  .bandlabel { text-align:center; margin-top:10px; font-size:1.3rem; font-weight:bold; color:#7fe3ff; min-height:1.6em; }
+  .bandlabel small { display:block; font-size:.82rem; color:#5b86a0; font-weight:normal; margin-top:2px; }
+  .chordnote { color:#ff9bbb; }
+  .foot { margin-top:16px; text-align:center; }
+  .foot a { color:#5b86a0; font-size:.85rem; text-decoration:none; margin:0 10px; } .foot a:hover{ color:#33d6ff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧬 Декодер обертонов голоса</h1>
+  <p class="sub">Запиши голос → он раскладывается на обертоны (гармоники основного тона). Ползунком снизу вверх слушай каждый обертон отдельно. В каждом звуке есть мажорное трезвучие (обертоны 4·5·6).</p>
+
+  <div class="controls">
+    <button class="big" id="recBtn">⏺ Записать голос</button>
+  </div>
+  <div id="status">Нажми «Записать», скажи протяжный звук («а-а-а»), потом останови.</div>
+
+  <div id="player">
+    <div class="controls">
+      <button class="big" id="playBtn">▶ Играть</button>
+      <button class="ghost" id="chordBtn">🎵 Мажор 4·5·6</button>
+      <button class="ghost" id="reRecBtn">⟲ Перезаписать</button>
+      <button class="ghost" id="dlAudioBtn">💾 Аудио</button>
+      <button class="ghost" id="dlImgBtn">🖼 Картинка</button>
+      <span class="volrow">громкость <input type="range" id="vol" min="0" max="3" step="0.01" value="1.5"></span>
+    </div>
+
+    <div class="stage">
+      <div class="sliderbox">
+        <span class="top">ВСЁ ↑</span>
+        <input type="range" class="vert" id="bandSlider" min="1" max="16" step="1" value="16">
+        <span class="bot">↓ основной</span>
+      </div>
+      <div class="specwrap">
+        <canvas id="spec" width="900" height="460"></canvas>
+      </div>
+    </div>
+    <div class="bandlabel" id="bandLabel">ВСЁ · весь голос целиком<small>двигай ползунок вниз, чтобы услышать отдельные обертоны</small></div>
+  </div>
+
+  <div class="foot">
+    <a href="index.html">← Визуальная версия</a>
+    <a href="depths.html">🎧 Глубины</a>
+    <a href="studio.html">🌸 Studio</a>
+    <a href="../">↑ Оригинал</a>
+  </div>
+</div>
+
+<script>
+const FMAX_DISP = 3800;     // верх частотной оси (как в референсе ~3700 Гц)
+const MAKEUP = 2.0;
+
+let ctx = null, stream = null, mediaRec = null, recChunks = [], recordedBlob = null, recordedBuffer = null;
+let isRecording = false, isPlaying = false, source = null, master = null, norm = null, normFactor = 1;
+let dryGain = null, bandGain = null, bp = null;
+let chordNodes = [];        // [{bp,g}] для обертонов 4,5,6
+let chordOn = false;
+let specImage = null;
+let F0 = 0, NB = 15, centers = [], fundamental = false; // centers[i] = частота обертона (i+1)
+let band = 16;              // 1..NB обертон, NB+1 = ВСЁ
+
+const el = id => document.getElementById(id);
+const recBtn = el('recBtn'), playBtn = el('playBtn'), chordBtn = el('chordBtn'), reRecBtn = el('reRecBtn'),
+      dlAudioBtn = el('dlAudioBtn'), dlImgBtn = el('dlImgBtn'), volEl = el('vol'),
+      statusEl = el('status'), playerEl = el('player'), slider = el('bandSlider'), bandLabel = el('bandLabel');
+const cv = el('spec'), g2 = cv.getContext('2d');
+const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const noteOf = f => { const n = Math.round(12*Math.log2(f/440)+69); return NOTES[((n%12)+12)%12] + (Math.floor(n/12)-1); };
+
+async function ensureCtx(){ if(!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') await ctx.resume(); }
+async function ensureStream(){ if(!stream) stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } }); return stream; }
+
+// ===== ЗАПИСЬ =====
+recBtn.addEventListener('click', async () => {
+  await ensureCtx();
+  if (isRecording) { mediaRec.stop(); return; }
+  try {
+    await ensureStream();
+    recChunks = [];
+    mediaRec = new MediaRecorder(stream);
+    mediaRec.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+    mediaRec.onstop = onRecStop;
+    mediaRec.start();
+    isRecording = true; recBtn.classList.add('rec'); recBtn.textContent = '⏹ Остановить запись';
+    statusEl.textContent = '🔴 Идёт запись… тяни звук';
+  } catch (err) { statusEl.innerHTML = `<span style="color:#ff6666">Ошибка микрофона: ${err.message || err}</span>`; }
+});
+reRecBtn.addEventListener('click', () => { if (isPlaying) stopPlayback(); recBtn.click(); });
+
+async function onRecStop() {
+  isRecording = false; recBtn.classList.remove('rec'); recBtn.textContent = '⏺ Записать заново';
+  recordedBlob = new Blob(recChunks, { type: mediaRec.mimeType || 'audio/webm' });
+  statusEl.textContent = '💾 Сохранено, ищу основной тон и обертоны…';
+  try {
+    recordedBuffer = await ctx.decodeAudioData(await recordedBlob.arrayBuffer());
+    normFactor = computeNorm(recordedBuffer);
+    analyzeOvertones(recordedBuffer);
+    renderSpectrogram(recordedBuffer);
+    slider.max = NB + 1; band = NB + 1; slider.value = band;
+    playerEl.style.display = 'block';
+    updateBandLabel(); drawOverlay();
+    statusEl.textContent = fundamental
+      ? `✅ Основной тон ≈ ${Math.round(F0)} Гц (${noteOf(F0)}), обертонов: ${NB}. Усиление ×${normFactor.toFixed(1)}`
+      : `✅ Тон не распознан — режим частотных полос (${NB}). Усиление ×${normFactor.toFixed(1)}`;
+  } catch (e) { statusEl.innerHTML = `<span style="color:#ff6666">Не удалось обработать запись: ${e.message}</span>`; }
+}
+
+function computeNorm(buffer) {
+  let peak = 0;
+  for (let c = 0; c < buffer.numberOfChannels; c++) { const d = buffer.getChannelData(c); for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; } }
+  return peak < 1e-4 ? 1 : Math.min(16, 0.97 / peak);
+}
+
+// ===== поиск основного тона (медиана по озвученным кадрам) =====
+function analyzeOvertones(buffer) {
+  const d = buffer.getChannelData(0), SR = buffer.sampleRate;
+  const N = 2048, hop = 2048, minLag = Math.floor(SR / 500), maxLag = Math.floor(SR / 70);
+  const f0s = [];
+  for (let off = 0; off + N < d.length; off += hop) {
+    let rms = 0; for (let i = 0; i < N; i++) { const x = d[off + i]; rms += x * x; }
+    if (Math.sqrt(rms / N) < 0.01) continue;
+    let c0 = 0; for (let i = 0; i < N; i++) c0 += d[off + i] * d[off + i];
+    let best = -1, bestC = 0;
+    for (let lag = minLag; lag <= maxLag; lag++) { let s = 0; for (let i = 0; i < N - lag; i++) s += d[off + i] * d[off + i + lag]; const c = s / c0; if (c > bestC) { bestC = c; best = lag; } }
+    if (best > 0 && bestC > 0.4) f0s.push(SR / best);
+  }
+  if (f0s.length >= 3) {
+    f0s.sort((a, b) => a - b); F0 = f0s[Math.floor(f0s.length / 2)]; fundamental = true;
+    NB = Math.max(6, Math.min(40, Math.floor(FMAX_DISP / F0)));
+    centers = []; for (let h = 1; h <= NB; h++) centers.push(h * F0);
+  } else { // запасной режим: log-полосы
+    fundamental = false; F0 = 0; NB = 20; centers = [];
+    const lo = 100, hi = 3500; for (let i = 0; i < NB; i++) centers.push(lo * Math.pow(hi / lo, i / (NB - 1)));
+  }
+}
+
+// ===== FFT (radix-2) =====
+function fft(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { const tr = re[i]; re[i] = re[j]; re[j] = tr; const ti = im[i]; im[i] = im[j]; im[j] = ti; } }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cwr = 1, cwi = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const ur = re[i + k], ui = im[i + k];
+        const vr = re[i + k + len / 2] * cwr - im[i + k + len / 2] * cwi;
+        const vi = re[i + k + len / 2] * cwi + im[i + k + len / 2] * cwr;
+        re[i + k] = ur + vr; im[i + k] = ui + vi; re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi;
+        const ncwr = cwr * wr - cwi * wi; cwi = cwr * wi + cwi * wr; cwr = ncwr;
+      }
+    }
+  }
+}
+function colormap(v) {
+  const r = Math.max(0, Math.min(1, 1.5 - Math.abs(4 * v - 3)));
+  const g = Math.max(0, Math.min(1, 1.5 - Math.abs(4 * v - 2)));
+  const b = Math.max(0, Math.min(1, 1.5 - Math.abs(4 * v - 1)));
+  const fade = Math.min(1, v * 3.2);
+  return [r * 255 * fade, g * 255 * fade, b * 255 * fade];
+}
+
+function renderSpectrogram(buffer) {
+  const data = buffer.getChannelData(0), SR = buffer.sampleRate;
+  const N = 2048, hop = 512, bins = N / 2, binHz = SR / N;
+  const frames = Math.max(1, Math.floor((data.length - N) / hop));
+  const win = new Float32Array(N); for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+  const re = new Float32Array(N), im = new Float32Array(N);
+  const maxBin = Math.min(bins - 1, Math.ceil(FMAX_DISP / binHz));
+  const cols = []; let maxDb = -Infinity;
+  for (let f = 0; f < frames; f++) {
+    const off = f * hop;
+    for (let i = 0; i < N; i++) { re[i] = data[off + i] * win[i]; im[i] = 0; }
+    fft(re, im);
+    const c = new Float32Array(maxBin + 1);
+    for (let b = 0; b <= maxBin; b++) { const db = 20 * Math.log10(Math.sqrt(re[b] * re[b] + im[b] * im[b]) + 1e-9); c[b] = db; if (db > maxDb) maxDb = db; }
+    cols.push(c);
+  }
+  const lo = maxDb - 78, hi = maxDb, W = cv.width, H = cv.height;
+  const img = g2.createImageData(W, H);
+  for (let x = 0; x < W; x++) {
+    const col = cols[Math.min(frames - 1, Math.floor(x / W * frames))];
+    for (let y = 0; y < H; y++) {
+      const freq = (1 - y / H) * FMAX_DISP, b = Math.min(maxBin, Math.round(freq / binHz));
+      let v = (col[b] - lo) / (hi - lo); v = Math.max(0, Math.min(1, v)); v = Math.pow(v, 0.78);
+      const [r, gg, bb] = colormap(v); const idx = (y * W + x) * 4;
+      img.data[idx] = r; img.data[idx + 1] = gg; img.data[idx + 2] = bb; img.data[idx + 3] = 255;
+    }
+  }
+  specImage = img; g2.putImageData(img, 0, 0);
+}
+
+const freqToY = f => cv.height * (1 - Math.min(f, FMAX_DISP) / FMAX_DISP);
+
+function drawOverlay() {
+  if (!specImage) return;
+  g2.putImageData(specImage, 0, 0);
+  const W = cv.width;
+  // тонкие направляющие по всем обертонам
+  for (let i = 0; i < NB; i++) {
+    const f = centers[i]; if (f > FMAX_DISP) continue;
+    const y = freqToY(f);
+    g2.strokeStyle = 'rgba(255,255,255,0.13)'; g2.lineWidth = 1;
+    g2.beginPath(); g2.moveTo(0, y); g2.lineTo(W, y); g2.stroke();
+  }
+  // подсветка выбранного обертона (или мажорного трезвучия)
+  const hi = chordOn ? [4, 5, 6].filter(h => h <= NB) : (band >= 1 && band <= NB ? [band] : []);
+  hi.forEach(h => {
+    const f = centers[h - 1]; if (f > FMAX_DISP) return;
+    const y = freqToY(f), bwY = Math.max(4, freqToY(f * 0.96) - y);
+    g2.fillStyle = chordOn ? 'rgba(255,92,138,0.22)' : 'rgba(255,255,255,0.20)';
+    g2.fillRect(0, y - bwY, W, bwY * 2);
+    g2.strokeStyle = chordOn ? 'rgba(255,155,187,0.95)' : 'rgba(255,255,255,0.95)'; g2.lineWidth = 2;
+    g2.beginPath(); g2.moveTo(0, y); g2.lineTo(W, y); g2.stroke();
+  });
+}
+
+function updateBandLabel() {
+  if (chordOn) {
+    bandLabel.innerHTML = `🎵 Мажорное трезвучие<small class="chordnote">обертоны 4·5·6 = ${Math.round(centers[3]||0)} · ${Math.round(centers[4]||0)} · ${Math.round(centers[5]||0)} Гц</small>`;
+    return;
+  }
+  if (band >= 1 && band <= NB) {
+    const f = centers[band - 1];
+    const triad = (band === 4 || band === 5 || band === 6) ? ' · входит в мажорное трезвучие 4·5·6' : '';
+    bandLabel.innerHTML = fundamental
+      ? `Обертон ${band} из ${NB}<small>${band}×F0 ≈ ${Math.round(f)} Гц · нота ${noteOf(f)}${triad}</small>`
+      : `Полоса ${band} из ${NB}<small>≈ ${Math.round(f)} Гц · нота ${noteOf(f)}</small>`;
+  } else {
+    bandLabel.innerHTML = `ВСЁ · весь голос целиком<small>двигай ползунок вниз, чтобы услышать отдельные обертоны</small>`;
+  }
+}
+
+// ===== воспроизведение =====
+playBtn.addEventListener('click', async () => { await ensureCtx(); if (!recordedBuffer) return; if (isPlaying) stopPlayback(); else startPlayback(); });
+chordBtn.addEventListener('click', () => { chordOn = !chordOn; chordBtn.classList.toggle('active', chordOn); updateBandLabel(); drawOverlay(); applyBand(); });
+
+function qFor(h) { return Math.min(40, Math.max(8, 2 * h)); } // узкий резонатор на обертон
+
+function startPlayback() {
+  master = ctx.createGain(); master.gain.value = parseFloat(volEl.value);
+  norm = ctx.createGain(); norm.gain.value = normFactor;
+  const boost = ctx.createGain(); boost.gain.value = 2.2;
+  const clip = ctx.createWaveShaper(); clip.oversample = '2x';
+  const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 1023 * 2 - 1; curve[i] = Math.tanh(2.2 * x); } clip.curve = curve;
+  norm.connect(boost); boost.connect(clip); clip.connect(master); master.connect(ctx.destination);
+
+  source = ctx.createBufferSource(); source.buffer = recordedBuffer; source.loop = true;
+  dryGain = ctx.createGain(); bandGain = ctx.createGain();
+  bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+  source.connect(dryGain); dryGain.connect(norm);
+  source.connect(bp); bp.connect(bandGain); bandGain.connect(norm);
+
+  // обертоны 4,5,6 для мажорного трезвучия
+  chordNodes = [4, 5, 6].map(h => {
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass';
+    if (h <= NB) { f.frequency.value = centers[h - 1]; f.Q.value = qFor(h); }
+    const g = ctx.createGain(); g.gain.value = 0;
+    source.connect(f); f.connect(g); g.connect(norm);
+    return { bp: f, g };
+  });
+
+  applyBand(); source.start();
+  isPlaying = true; playBtn.textContent = '⏸ Пауза'; playBtn.classList.add('active');
+}
+function stopPlayback() {
+  if (source) { try { source.stop(); } catch (e) {} source.disconnect(); source = null; }
+  chordNodes = [];
+  isPlaying = false; playBtn.textContent = '▶ Играть'; playBtn.classList.remove('active');
+}
+function applyBand() {
+  if (!isPlaying || !ctx) return;
+  const t = ctx.currentTime;
+  const set = (node, v) => node.gain.setTargetAtTime(v, t, 0.03);
+  if (chordOn) {
+    set(dryGain, 0); set(bandGain, 0);
+    chordNodes.forEach(n => set(n.g, MAKEUP));
+  } else {
+    chordNodes.forEach(n => set(n.g, 0));
+    if (band >= 1 && band <= NB) {
+      bp.frequency.setTargetAtTime(centers[band - 1], t, 0.02);
+      bp.Q.setTargetAtTime(qFor(band), t, 0.02);
+      set(dryGain, 0); set(bandGain, MAKEUP);
+    } else { set(dryGain, 1); set(bandGain, 0); }
+  }
+}
+
+slider.addEventListener('input', () => {
+  band = parseInt(slider.value, 10);
+  if (chordOn) { chordOn = false; chordBtn.classList.remove('active'); }
+  updateBandLabel(); drawOverlay(); applyBand();
+});
+volEl.addEventListener('input', () => { if (master) master.gain.value = parseFloat(volEl.value); });
+dlAudioBtn.addEventListener('click', () => {
+  if (!recordedBlob) return;
+  const ext = (recordedBlob.type.includes('mp4') || recordedBlob.type.includes('mpeg')) ? 'm4a' : 'webm';
+  const a = document.createElement('a'); a.href = URL.createObjectURL(recordedBlob);
+  a.download = 'voice-' + new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-') + '.' + ext; a.click();
+});
+dlImgBtn.addEventListener('click', () => { const a = document.createElement('a'); a.download = 'overtones-' + Date.now() + '.png'; a.href = cv.toDataURL('image/png'); a.click(); });
+</script>
+</body>
+</html>
