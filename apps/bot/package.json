@@ -1,0 +1,18 @@
+{
+  "name": "@astro/bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/bot.ts",
+    "start": "tsx --env-file=../../.env src/bot.ts"
+  },
+  "dependencies": {
+    "@astro/core": "*",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.11",
+    "tsx": "^4.19.1"
+  }
+}

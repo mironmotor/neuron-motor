@@ -1,0 +1,25 @@
+{
+  "name": "astro-ai-telegram-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Astro AI Telegram MVP — Telegram Bot + Mini App + Tribute payments + Astro API + AI report + PDF",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@astro/api",
+    "dev:bot": "npm run dev --workspace=@astro/bot",
+    "dev:web": "npm run dev --workspace=@astro/web",
+    "dev": "concurrently -n api,bot,web -c blue,green,magenta \"npm:dev:api\" \"npm:dev:bot\" \"npm:dev:web\"",
+    "build": "npm run build --workspace=@astro/web",
+    "typecheck": "tsc -p packages/core/tsconfig.json --noEmit && tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/bot/tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

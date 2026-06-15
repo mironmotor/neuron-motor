@@ -1,0 +1,99 @@
+:root {
+  --bg: #0b0b12;
+  --panel: #15151f;
+  --accent: #b99bff;
+  --accent-2: #7c5cff;
+  --text: #ece9ff;
+  --muted: #9a96b8;
+  --gold: #e9c46a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: radial-gradient(circle at 50% -10%, #1c1733 0%, var(--bg) 55%);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.screen { max-width: 560px; margin: 0 auto; padding: 24px 18px 64px; }
+
+h1 { font-size: 1.8rem; line-height: 1.2; margin-bottom: 10px; }
+h2 { font-size: 1.15rem; margin: 18px 0 8px; color: var(--accent); }
+p { color: var(--text); line-height: 1.55; }
+.muted { color: var(--muted); }
+
+.card {
+  background: var(--panel);
+  border: 1px solid rgba(185, 155, 255, 0.18);
+  border-radius: 16px;
+  padding: 18px;
+  margin: 14px 0;
+}
+
+label { display: block; font-size: 0.9rem; color: var(--muted); margin: 12px 0 6px; }
+
+input, textarea {
+  width: 100%;
+  background: #0e0e17;
+  border: 1px solid rgba(185, 155, 255, 0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 1rem;
+}
+textarea { min-height: 80px; resize: vertical; }
+
+button {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  padding: 15px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: transform 0.12s, opacity 0.2s;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(120deg, var(--accent-2), var(--accent)); color: #0b0b12; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent-2); }
+
+.price { font-size: 2rem; font-weight: 800; color: var(--gold); }
+.error { color: #ff8181; margin-top: 10px; }
+.teaser { white-space: pre-wrap; }
+
+.spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid rgba(185,155,255,0.25); border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite; margin: 24px auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+ul.plan { list-style: none; }
+ul.plan li { padding: 6px 0 6px 22px; position: relative; }
+ul.plan li::before { content: '✦'; position: absolute; left: 0; color: var(--gold); }
+
+/* ───────── A4 print version for the PDF (plan §7) ───────── */
+@page { size: A4; margin: 0; }
+
+.report-page {
+  width: 794px;
+  min-height: 1123px;
+  padding: 56px;
+  box-sizing: border-box;
+  background: #0b0b12;
+  color: var(--text);
+}
+.report-page .section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 18px; }
+.report-page h1 { font-size: 2.2rem; }
+.report-page .subtitle { color: var(--gold); margin: 6px 0 24px; font-size: 1.1rem; }
+
+@media print {
+  body { background: #0b0b12; }
+  .no-print { display: none !important; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
