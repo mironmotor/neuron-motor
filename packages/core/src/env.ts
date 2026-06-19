@@ -28,6 +28,7 @@ export const env = {
   anthropicModel: get('ANTHROPIC_MODEL', 'claude-opus-4-8'),
   openaiApiKey: get('OPENAI_API_KEY'),
   openaiModel: get('OPENAI_MODEL', 'gpt-4o'),
+  openaiBaseUrl: get('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
 
   // Supabase
   supabaseUrl: get('SUPABASE_URL'),

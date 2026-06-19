@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/bot.ts",
-    "start": "tsx --env-file=../../.env src/bot.ts"
+    "start": "tsx src/bot.ts"
   },
   "dependencies": {
     "@astro/core": "*",

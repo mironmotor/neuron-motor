@@ -37,10 +37,13 @@ class AnthropicLlmAdapter implements LlmAdapter {
   }
 }
 
-// ───────────────────────────── OpenAI (optional) ────────────────────────
+// ─────────── OpenAI-compatible (OpenAI, Qwen, MiniMax, DeepSeek, …) ───────────
+// Any provider exposing the OpenAI chat-completions API works — just point
+// OPENAI_BASE_URL at it and set OPENAI_MODEL + OPENAI_API_KEY.
 class OpenAiLlmAdapter implements LlmAdapter {
   async generateReport(chart: NormalizedChart, mode: ReportMode): Promise<ReportJson> {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const base = env.openaiBaseUrl.replace(/\/$/, '');
+    const res = await fetch(`${base}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

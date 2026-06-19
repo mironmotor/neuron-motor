@@ -1,0 +1,85 @@
+# Render Blueprint — deploys the whole Astro AI MVP from this repo.
+# Render → New → Blueprint → connect this repo. Fill the `sync: false` secrets
+# in the dashboard, then do the 2-pass URL wiring described in DEPLOY.md.
+services:
+  # ───────────────────────── Backend (Express) ─────────────────────────
+  - type: web
+    name: astro-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npx puppeteer browsers install chrome
+    startCommand: npm run start --workspace=@astro/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PUPPETEER_CACHE_DIR
+        value: /opt/render/project/src/.cache/puppeteer
+      - key: WEBAPP_URL            # set to the astro-web URL after first deploy
+        sync: false
+      - key: BACKEND_URL           # set to this service's own URL after first deploy
+        sync: false
+      - key: LLM_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-4-8
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: OPENAI_BASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: PDF_STORAGE_BUCKET
+        value: reports
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      - key: TRIBUTE_PRODUCT_LINK
+        sync: false
+      - key: TRIBUTE_WEBHOOK_SECRET_OR_API_KEY
+        sync: false
+      - key: ASTRO_API_BASE_URL
+        sync: false
+      - key: ASTRO_API_CLIENT_ID
+        sync: false
+      - key: ASTRO_API_CLIENT_SECRET
+        sync: false
+      - key: FULL_REPORT_PRICE
+        value: "990"
+      - key: FULL_REPORT_CURRENCY
+        value: RUB
+
+  # ───────────────────────── Telegram bot (worker) ─────────────────────
+  - type: worker
+    name: astro-bot
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run start --workspace=@astro/bot
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      - key: WEBAPP_URL            # the astro-web URL (Mini App button target)
+        sync: false
+
+  # ───────────────────────── Mini App (Next.js) ───────────────────────
+  - type: web
+    name: astro-web
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build --workspace=@astro/web
+    startCommand: npm run start --workspace=@astro/web
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_BACKEND_URL  # set to the astro-api URL, then redeploy
+        sync: false

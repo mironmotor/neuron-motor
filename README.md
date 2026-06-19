@@ -78,10 +78,26 @@ curl -X POST http://localhost:4000/report/generate \
 4. **Astro API:** `ASTRO_API_BASE_URL` + `ASTRO_API_CLIENT_ID/SECRET`
    (адаптер нормализует ответ в `core/houses/planets/aspects/current_period`).
 5. **AI:** `ANTHROPIC_API_KEY` (модель `claude-opus-4-8`).
-6. Хостинг: `apps/api` + `apps/bot` на Railway/Render (long-running),
-   `apps/web` на Vercel. Puppeteer требует флаги `--no-sandbox` (уже заданы)
-   и установленный Chrome: `npx puppeteer browsers install chrome`
-   (без него PDF-шаг мягко падает, а текст отчёта всё равно доставляется).
+6. Хостинг: см. **[DEPLOY.md](./DEPLOY.md)** — готовый Render Blueprint
+   (`render.yaml`) поднимает api + bot + web из этого репо в пару кликов;
+   есть и вариант Vercel + Railway. Puppeteer требует флаги `--no-sandbox`
+   (уже заданы) и Chrome: `npx puppeteer browsers install chrome` (без него
+   PDF-шаг мягко падает, а текст отчёта всё равно доставляется).
+
+### Какой ключ реально нужен
+
+Нужен **только один LLM-ключ**. Astro API — опционально (встроен fallback).
+
+| Хочешь использовать | Поставь | Базовый URL |
+|---|---|---|
+| Claude (дефолт) | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` | — |
+| OpenAI | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | `https://api.openai.com/v1` |
+| Qwen | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` |
+| MiniMax | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | `https://api.minimax.io/v1` |
+| DeepSeek | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | `https://api.deepseek.com/v1` |
+
+Любой OpenAI-совместимый провайдер подключается через `OPENAI_BASE_URL` +
+`OPENAI_MODEL` — код менять не нужно.
 
 Все переменные — в `.env.example`.
 
