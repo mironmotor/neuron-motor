@@ -43,22 +43,28 @@ class AnthropicLlmAdapter implements LlmAdapter {
 class OpenAiLlmAdapter implements LlmAdapter {
   async generateReport(chart: NormalizedChart, mode: ReportMode): Promise<ReportJson> {
     const base = env.openaiBaseUrl.replace(/\/$/, '');
-    const res = await fetch(`${base}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.openaiApiKey}`,
-      },
-      body: JSON.stringify({
-        model: env.openaiModel,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: buildUserPrompt(chart, mode) },
-        ],
-      }),
-    });
-    if (!res.ok) throw new Error(`OpenAI error ${res.status}: ${await res.text()}`);
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: buildUserPrompt(chart, mode) },
+    ];
+
+    const call = (withJsonMode: boolean) =>
+      fetch(`${base}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.openaiApiKey}` },
+        body: JSON.stringify({
+          model: env.openaiModel,
+          ...(withJsonMode ? { response_format: { type: 'json_object' } } : {}),
+          messages,
+        }),
+      });
+
+    // Some OpenAI-compatible providers (parts of Qwen/MiniMax) reject
+    // response_format — fall back to a plain call and parse the JSON ourselves.
+    let res = await call(true);
+    if (!res.ok && res.status === 400) res = await call(false);
+    if (!res.ok) throw new Error(`LLM error ${res.status}: ${await res.text()}`);
+
     const data: any = await res.json();
     return safeParseReport(data.choices?.[0]?.message?.content ?? '{}');
   }

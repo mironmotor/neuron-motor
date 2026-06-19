@@ -31,15 +31,63 @@ fallback). Supabase нужен для хранения заказов/отчёт
 
 Готово: `/start` в боте → Mini App → форма → тизер → оплата → отчёт + PDF.
 
-## Вариант B — Vercel (Mini App) + Railway (api + bot)
+## Вариант B — Vercel (Mini App) + Railway (api + bot) ✅ выбранный
 
-- **Vercel:** New Project → этот репо → **Root Directory = `apps/web`** →
-  env `NEXT_PUBLIC_BACKEND_URL` = URL бэкенда.
-- **Railway:** два сервиса из репо:
-  - api — Start Command `npm run start --workspace=@astro/api`
-  - bot — Start Command `npm run start --workspace=@astro/bot`
-  - переменные — как в `.env.example`. Для PDF добавь build-шаг
-    `npx puppeteer browsers install chrome`.
+### B1. Supabase
+Создай проект → SQL Editor → выполни `supabase/schema.sql` → Storage → public-бакет
+`reports`. Сохрани `Project URL` и `service_role` ключ.
+
+### B2. Railway — два сервиса из этого репо
+Создай проект из GitHub-репо и добавь **два сервиса** (New → GitHub Repo, тот же репо):
+
+| Сервис | Start Command | Тип |
+|---|---|---|
+| `astro-api` | `npm run start --workspace=@astro/api` | публичный (Generate Domain) |
+| `astro-bot` | `npm run start --workspace=@astro/bot` | без домена |
+
+Build command у обоих: `npm install` (Railway/Nixpacks определит сам).
+Чтобы билд был лёгким, добавь обоим переменную `PUPPETEER_SKIP_DOWNLOAD=true`
+(PDF пока работает в graceful-fallback; текст отчёта доставляется в любом случае —
+полноценный PDF включим позже отдельным Docker-образом с Chromium).
+
+**Переменные `astro-api` (твой случай — Qwen):**
+```
+NODE_ENV=production
+LLM_PROVIDER=openai
+OPENAI_API_KEY=<твой ключ Qwen>
+OPENAI_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+OPENAI_MODEL=qwen-plus
+SUPABASE_URL=<...>
+SUPABASE_SERVICE_ROLE_KEY=<...>
+PDF_STORAGE_BUCKET=reports
+TELEGRAM_BOT_TOKEN=<...>
+TELEGRAM_BOT_USERNAME=<...>
+TRIBUTE_PRODUCT_LINK=<...>
+TRIBUTE_WEBHOOK_SECRET_OR_API_KEY=<...>
+FULL_REPORT_PRICE=990
+FULL_REPORT_CURRENCY=RUB
+PUPPETEER_SKIP_DOWNLOAD=true
+WEBAPP_URL=<URL Vercel-приложения, заполнить после B3>
+BACKEND_URL=<публичный URL этого сервиса>
+```
+**Если ключ MiniMax**, замени три строки:
+```
+OPENAI_BASE_URL=https://api.minimax.io/v1
+OPENAI_MODEL=MiniMax-Text-01
+# OPENAI_API_KEY=<твой ключ MiniMax>
+```
+**Переменные `astro-bot`:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`,
+`WEBAPP_URL` (= URL Vercel), `PUPPETEER_SKIP_DOWNLOAD=true`.
+
+### B3. Vercel — Mini App
+New Project → этот репо → **Root Directory = `apps/web`** → Framework: Next.js →
+переменная `NEXT_PUBLIC_BACKEND_URL` = публичный URL `astro-api` из Railway → Deploy.
+
+### B4. Связать и включить
+- В Railway `astro-api` пропиши `WEBAPP_URL` = URL Vercel, `BACKEND_URL` = свой URL.
+- В Railway `astro-bot` пропиши `WEBAPP_URL` = URL Vercel.
+- **@BotFather** → Mini App / Menu Button → URL Vercel.
+- **Tribute** → webhook → `https://<astro-api>/payments/tribute/webhook`.
 
 ## Проверка после деплоя
 
