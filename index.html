@@ -12,7 +12,7 @@
  <div>
  <p class="eyebrow">Realtime voice spectrum</p>
  <h1>Voice Decomposer</h1>
- <p class="lead">Разложение голоса на музыкальные полосы, гармоники и акустическое состояние для Max17.</p>
+ <p class="lead">Разложение голоса и музыки на спектры, гармоники, ноты и акустическое состояние для Max17.</p>
  </div>
 
  <button id="btn" class="mic-button" type="button">Запустить микрофон</button>
@@ -24,6 +24,7 @@
  <button class="mode-tab" type="button" data-mode="solo">Один тон</button>
  <button class="mode-tab" type="button" data-mode="harmonics">Гармоники</button>
  <button class="mode-tab" type="button" data-mode="state">Состояние</button>
+ <button class="mode-tab" type="button" data-mode="music">Музыка</button>
  </div>
 
  <div class="tone-picker">
@@ -39,6 +40,52 @@
  </label>
 
  <div class="tone-grid" id="toneGrid" aria-label="50 тонов"></div>
+
+ <div class="music-panel" id="musicPanel">
+ <label class="file-loader" for="audioFile">
+ <span>Аудиофайл</span>
+ <input id="audioFile" type="file" accept="audio/*">
+ </label>
+ <audio id="audioPlayer" controls></audio>
+
+ <div class="tune-grid" aria-label="Настройки распознавания музыки">
+ <label>
+ <span>Noise floor</span>
+ <input id="noiseFloor" type="range" min="0" max="120" value="28">
+ <strong id="noiseFloorValue">28</strong>
+ </label>
+ <label>
+ <span>Note gate</span>
+ <input id="noteGate" type="range" min="5" max="40" value="12">
+ <strong id="noteGateValue">12%</strong>
+ </label>
+ <label>
+ <span>Sensitivity</span>
+ <input id="musicSensitivity" type="range" min="60" max="220" value="118">
+ <strong id="musicSensitivityValue">1.18</strong>
+ </label>
+ <label>
+ <span>Smoothing</span>
+ <input id="musicSmoothing" type="range" min="20" max="95" value="76">
+ <strong id="musicSmoothingValue">0.76</strong>
+ </label>
+ <label>
+ <span>Harmonics</span>
+ <input id="musicHarmonics" type="range" min="0" max="100" value="58">
+ <strong id="musicHarmonicsValue">58%</strong>
+ </label>
+ <label>
+ <span>Min Hz</span>
+ <input id="musicMinHz" type="range" min="25" max="600" value="55">
+ <strong id="musicMinHzValue">55</strong>
+ </label>
+ <label>
+ <span>Max Hz</span>
+ <input id="musicMaxHz" type="range" min="1000" max="12000" value="5200">
+ <strong id="musicMaxHzValue">5200</strong>
+ </label>
+ </div>
+ </div>
  </div>
 
  <div class="level-card">
@@ -53,6 +100,7 @@
 
  <div id="status" class="status">Нажми кнопку и разреши доступ к микрофону</div>
  <output id="voiceStatePayload" class="telemetry-output" aria-hidden="true"></output>
+ <output id="musicPayload" class="telemetry-output" aria-hidden="true"></output>
 
  <section class="visual-stack">
  <article class="visual-block">

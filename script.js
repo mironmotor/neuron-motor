@@ -1,12 +1,16 @@
-let audioContext, analyser, stream, animationFrame;
+let audioContext, analyser, stream, animationFrame, musicSource;
 let isRunning = false;
 let spectrumHistory = [];
 let soloHistory = [];
 let harmonicHistory = [];
 let stateHistory = [];
+let musicHistory = [];
 let pitchHistory = [];
 let previousLevels = null;
 let latestVoiceState = null;
+let latestMusicState = null;
+let activeSource = null;
+let audioObjectUrl = null;
 let selectedTone = 24;
 let displayMode = 'all';
 
@@ -17,7 +21,10 @@ const MAX_HISTORY = 144;
 const PEAK_LIMIT = 12;
 const HARMONIC_LIMIT = 8;
 const STATE_HISTORY_LIMIT = 120;
+const NOTE_MIN_MIDI = 33;
+const NOTE_MAX_MIDI = 108;
 const toneBands = createToneBands();
+const musicNotes = createMusicNotes();
 const stateMetrics = [
  { key: 'energy', label: 'energy', color: '#35f29a' },
  { key: 'focus', label: 'focus', color: '#38d9ff' },
@@ -46,22 +53,51 @@ const levelHint = document.getElementById('levelHint');
 const spectrumLabel = document.getElementById('spectrumLabel');
 const historyLabel = document.getElementById('historyLabel');
 const voiceStatePayload = document.getElementById('voiceStatePayload');
+const musicPayload = document.getElementById('musicPayload');
+const audioFile = document.getElementById('audioFile');
+const audioPlayer = document.getElementById('audioPlayer');
+const noiseFloor = document.getElementById('noiseFloor');
+const noteGate = document.getElementById('noteGate');
+const musicSensitivity = document.getElementById('musicSensitivity');
+const musicSmoothing = document.getElementById('musicSmoothing');
+const musicHarmonics = document.getElementById('musicHarmonics');
+const musicMinHz = document.getElementById('musicMinHz');
+const musicMaxHz = document.getElementById('musicMaxHz');
+const noiseFloorValue = document.getElementById('noiseFloorValue');
+const noteGateValue = document.getElementById('noteGateValue');
+const musicSensitivityValue = document.getElementById('musicSensitivityValue');
+const musicSmoothingValue = document.getElementById('musicSmoothingValue');
+const musicHarmonicsValue = document.getElementById('musicHarmonicsValue');
+const musicMinHzValue = document.getElementById('musicMinHzValue');
+const musicMaxHzValue = document.getElementById('musicMaxHzValue');
 const modeTabs = [...document.querySelectorAll('.mode-tab')];
 
 btn.addEventListener('click', toggleMic);
+audioFile.addEventListener('change', handleAudioFile);
+audioPlayer.addEventListener('play', resumeMusicAnalysis);
+audioPlayer.addEventListener('pause', handleMusicPause);
+audioPlayer.addEventListener('ended', handleMusicPause);
 toneSlider.addEventListener('input', () => selectTone(Number(toneSlider.value) - 1));
 modeTabs.forEach(tab => {
  tab.addEventListener('click', () => setMode(tab.dataset.mode));
 });
+[noiseFloor, noteGate, musicSensitivity, musicSmoothing, musicHarmonics, musicMinHz, musicMaxHz].forEach(input => {
+ input.addEventListener('input', () => {
+ updateMusicSettingsUI();
+ if (!isRunning) drawIdle();
+ });
+});
 
 buildToneGrid();
 updateToneUI();
+updateMusicSettingsUI();
 document.body.dataset.mode = displayMode;
 window.getVoiceStateSnapshot = () => latestVoiceState;
+window.getMusicSnapshot = () => latestMusicState;
 drawIdle();
 
 async function toggleMic() {
- if (isRunning) {
+ if (isRunning && activeSource === 'mic') {
  stopMic();
  return;
  }
@@ -69,6 +105,8 @@ async function toggleMic() {
  setStatus('Запрашиваем доступ к микрофону...');
 
  try {
+ if (!audioPlayer.paused) audioPlayer.pause();
+ stopCurrentInput();
  stream = await navigator.mediaDevices.getUserMedia({
  audio: {
  echoCancellation: false,
@@ -77,12 +115,12 @@ async function toggleMic() {
  }
  });
 
- audioContext = new (window.AudioContext || window.webkitAudioContext)();
+ audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+ if (audioContext.state === 'suspended') await audioContext.resume();
  const source = audioContext.createMediaStreamSource(stream);
 
- analyser = audioContext.createAnalyser();
- analyser.fftSize = 4096;
- analyser.smoothingTimeConstant = 0.72;
+ activeSource = 'mic';
+ analyser = createAnalyserNode();
 
  source.connect(analyser);
 
@@ -95,6 +133,7 @@ async function toggleMic() {
  soloHistory = [];
  harmonicHistory = [];
  stateHistory = [];
+ musicHistory = [];
  pitchHistory = [];
  previousLevels = null;
  animate();
@@ -105,18 +144,113 @@ async function toggleMic() {
 }
 
 function stopMic() {
- if (stream) stream.getTracks().forEach(track => track.stop());
- if (audioContext) audioContext.close();
- if (animationFrame) cancelAnimationFrame(animationFrame);
+ if (activeSource === 'music') {
+ audioPlayer.pause();
+ return;
+ }
 
- stream = null;
- audioContext = null;
- analyser = null;
- previousLevels = null;
- isRunning = false;
+ stopCurrentInput();
  btn.textContent = 'Запустить микрофон';
  btn.classList.remove('active');
  setStatus('Остановлено');
+ drawIdle();
+}
+
+function stopCurrentInput() {
+ if (stream) stream.getTracks().forEach(track => track.stop());
+ if (animationFrame) cancelAnimationFrame(animationFrame);
+ if (musicSource) {
+ try {
+ musicSource.disconnect();
+ } catch (err) {
+ // The music source may already be disconnected.
+ }
+ }
+ if (analyser) {
+ try {
+ analyser.disconnect();
+ } catch (err) {
+ // The analyser may already be disconnected.
+ }
+ }
+
+ stream = null;
+ analyser = null;
+ previousLevels = null;
+ isRunning = false;
+ activeSource = null;
+}
+
+function createAnalyserNode() {
+ const node = audioContext.createAnalyser();
+ node.fftSize = 8192;
+ node.smoothingTimeConstant = activeSource === 'music'
+ ? Number(musicSmoothing.value) / 100
+ : 0.72;
+
+ return node;
+}
+
+async function handleAudioFile(event) {
+ const file = event.target.files[0];
+ if (!file) return;
+
+ if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+ audioObjectUrl = URL.createObjectURL(file);
+ audioPlayer.src = audioObjectUrl;
+ audioPlayer.load();
+ setMode('music');
+ setStatus(`Загружен трек: ${file.name}`);
+
+ try {
+ await audioPlayer.play();
+ } catch (err) {
+ setStatus('Трек готов. Нажми play в аудиоплеере.', 'ok');
+ }
+}
+
+async function resumeMusicAnalysis() {
+ try {
+ await startMusicAnalysis();
+ } catch (err) {
+ console.error(err);
+ setStatus(`Ошибка музыки: ${err.message || 'не удалось запустить анализ'}`, 'error');
+ }
+}
+
+async function startMusicAnalysis() {
+ stopCurrentInput();
+ audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+ if (audioContext.state === 'suspended') await audioContext.resume();
+
+ if (!musicSource) {
+ musicSource = audioContext.createMediaElementSource(audioPlayer);
+ }
+
+ activeSource = 'music';
+ analyser = createAnalyserNode();
+ musicSource.connect(analyser);
+ analyser.connect(audioContext.destination);
+
+ isRunning = true;
+ btn.textContent = 'Запустить микрофон';
+ btn.classList.remove('active');
+ spectrumHistory = [];
+ soloHistory = [];
+ harmonicHistory = [];
+ stateHistory = [];
+ musicHistory = [];
+ pitchHistory = [];
+ previousLevels = null;
+ setMode('music');
+ setStatus('Анализирую музыку: спектр, ноты и чистоту распознавания.', 'ok');
+ animate();
+}
+
+function handleMusicPause() {
+ if (activeSource !== 'music') return;
+ stopCurrentInput();
+ setStatus('Музыка на паузе');
  drawIdle();
 }
 
@@ -130,9 +264,12 @@ function animate() {
  const levels = toneBands.map(band => getBandLevel(dataArray, band));
  const analysis = analyzeHarmonics(dataArray);
  const voiceState = analyzeVoiceState(dataArray, levels, analysis);
+ const musicState = analyzeMusic(dataArray);
  const currentLevel = levels[selectedTone];
  const peak = Math.max(...levels, 0.01);
- const focusedLevel = displayMode === 'state'
+ const focusedLevel = displayMode === 'music'
+ ? musicState.clarity
+ : displayMode === 'state'
  ? voiceState.certainty
  : displayMode === 'harmonics'
  ? (analysis.fundamental ? analysis.fundamental.level / 255 : 0)
@@ -140,6 +277,7 @@ function animate() {
 
  if (displayMode === 'harmonics') updateHarmonicUI(analysis);
  if (displayMode === 'state') updateStateUI(voiceState);
+ if (displayMode === 'music') updateMusicUI(musicState);
 
  spectrumHistory.push(levels);
  if (spectrumHistory.length > MAX_HISTORY) spectrumHistory.shift();
@@ -153,10 +291,14 @@ function animate() {
  stateHistory.push(voiceState.scores);
  if (stateHistory.length > STATE_HISTORY_LIMIT) stateHistory.shift();
 
- publishVoiceState(voiceState);
+ musicHistory.push(musicState.notes.map(note => note.level));
+ if (musicHistory.length > MAX_HISTORY) musicHistory.shift();
 
- drawSpectrum(levels, peak, analysis, voiceState);
- drawHistory(levels, analysis, voiceState);
+ publishVoiceState(voiceState);
+ publishMusicState(musicState);
+
+ drawSpectrum(levels, peak, analysis, voiceState, musicState);
+ drawHistory(levels, analysis, voiceState, musicState);
  updateLevel(focusedLevel);
 
  animationFrame = requestAnimationFrame(animate);
@@ -176,6 +318,20 @@ function createToneBands() {
  high,
  center,
  note: getNearestNote(center)
+ };
+ });
+}
+
+function createMusicNotes() {
+ return Array.from({ length: NOTE_MAX_MIDI - NOTE_MIN_MIDI + 1 }, (_, index) => {
+ const midi = NOTE_MIN_MIDI + index;
+ const frequency = 440 * Math.pow(2, (midi - 69) / 12);
+
+ return {
+ midi,
+ frequency,
+ name: getNoteNameFromMidi(midi),
+ pitchClass: ((midi % 12) + 12) % 12
  };
  });
 }
@@ -403,6 +559,89 @@ function analyzeVoiceState(dataArray, levels, analysis) {
  };
 }
 
+function analyzeMusic(dataArray) {
+ const settings = getMusicSettings();
+ const notes = musicNotes.map(note => {
+ const inRange = note.frequency >= settings.minHz && note.frequency <= settings.maxHz;
+ const fundamental = inRange ? getFrequencyLevel(dataArray, note.frequency, Math.max(7, note.frequency * 0.012)) : 0;
+ const second = note.frequency * 2 <= settings.maxHz ? getFrequencyLevel(dataArray, note.frequency * 2, Math.max(9, note.frequency * 0.018)) * 0.46 * settings.harmonics : 0;
+ const third = note.frequency * 3 <= settings.maxHz ? getFrequencyLevel(dataArray, note.frequency * 3, Math.max(11, note.frequency * 0.02)) * 0.25 * settings.harmonics : 0;
+ const raw = fundamental + second + third;
+ const cleaned = Math.max(0, raw - settings.noiseFloor);
+ const level = clamp01(cleaned / 190 * settings.sensitivity);
+
+ return {
+ ...note,
+ raw,
+ level
+ };
+ });
+ const activeNotes = notes
+ .filter(note => note.level >= settings.noteGate)
+ .sort((a, b) => b.level - a.level)
+ .slice(0, 10);
+ const chroma = Array.from({ length: 12 }, (_, pitchClass) => {
+ const sum = notes
+ .filter(note => note.pitchClass === pitchClass)
+ .reduce((total, note) => total + note.level, 0);
+
+ return clamp01(sum / 2.6);
+ });
+ const clarity = clamp01((activeNotes[0]?.level || 0) * 0.48 + (activeNotes[1]?.level || 0) * 0.22 + (1 - Math.min(activeNotes.length / 16, 1)) * 0.18 + settings.sensitivity * 0.05);
+ const labels = getMusicLabels(activeNotes, chroma);
+
+ return {
+ labels,
+ primary: labels[0] || 'no notes',
+ clarity,
+ notes,
+ activeNotes,
+ chroma,
+ settings,
+ timestamp: Date.now()
+ };
+}
+
+function getMusicSettings() {
+ return {
+ noiseFloor: Number(noiseFloor.value),
+ noteGate: Number(noteGate.value) / 100,
+ sensitivity: Number(musicSensitivity.value) / 100,
+ smoothing: Number(musicSmoothing.value) / 100,
+ harmonics: Number(musicHarmonics.value) / 100,
+ minHz: Number(musicMinHz.value),
+ maxHz: Number(musicMaxHz.value)
+ };
+}
+
+function getMusicLabels(activeNotes, chroma) {
+ if (!activeNotes.length) return ['no notes'];
+
+ const topClasses = chroma
+ .map((level, pitchClass) => ({ level, pitchClass, name: getNoteNameFromMidi(60 + pitchClass).replace(/\d+$/, '') }))
+ .sort((a, b) => b.level - a.level)
+ .slice(0, 3)
+ .filter(item => item.level > 0.08)
+ .map(item => item.name);
+ const topNotes = activeNotes.slice(0, 4).map(note => note.name);
+
+ return [...topNotes, ...topClasses].slice(0, 6);
+}
+
+function updateMusicSettingsUI() {
+ noiseFloorValue.textContent = noiseFloor.value;
+ noteGateValue.textContent = `${noteGate.value}%`;
+ musicSensitivityValue.textContent = (Number(musicSensitivity.value) / 100).toFixed(2);
+ musicSmoothingValue.textContent = (Number(musicSmoothing.value) / 100).toFixed(2);
+ musicHarmonicsValue.textContent = `${musicHarmonics.value}%`;
+ musicMinHzValue.textContent = musicMinHz.value;
+ musicMaxHzValue.textContent = musicMaxHz.value;
+
+ if (analyser && activeSource === 'music') {
+ analyser.smoothingTimeConstant = Number(musicSmoothing.value) / 100;
+ }
+}
+
 function getAverageInRange(dataArray, lowHz, highHz) {
  const binWidth = audioContext.sampleRate / analyser.fftSize;
  const start = Math.max(1, Math.floor(lowHz / binWidth));
@@ -456,7 +695,7 @@ function getStateLabels(scores) {
  return labels.length ? labels : ['neutral'];
 }
 
-function drawSpectrum(levels, peak, analysis = getIdleAnalysis(), voiceState = getIdleState()) {
+function drawSpectrum(levels, peak, analysis = getIdleAnalysis(), voiceState = getIdleState(), musicState = getIdleMusicState()) {
  const { width, height } = spectrumCanvas;
  const padding = 30;
  const graphHeight = height - padding * 2;
@@ -478,6 +717,11 @@ function drawSpectrum(levels, peak, analysis = getIdleAnalysis(), voiceState = g
 
  if (displayMode === 'state') {
  drawStateSpectrum(voiceState);
+ return;
+ }
+
+ if (displayMode === 'music') {
+ drawMusicSpectrum(musicState);
  return;
  }
 
@@ -670,7 +914,60 @@ function drawStateSpectrum(voiceState) {
 
 }
 
-function drawHistory(levels, analysis = getIdleAnalysis(), voiceState = getIdleState()) {
+function drawMusicSpectrum(musicState) {
+ const { width, height } = spectrumCanvas;
+ const padding = 36;
+ const usableWidth = width - padding * 2;
+ const usableHeight = height - padding * 2;
+ const visibleNotes = musicState.notes.filter(note => note.frequency >= musicState.settings.minHz && note.frequency <= musicState.settings.maxHz);
+ const gap = 2;
+ const barWidth = Math.max(3, (usableWidth - gap * Math.max(0, visibleNotes.length - 1)) / Math.max(1, visibleNotes.length));
+
+ specCtx.fillStyle = 'rgba(255, 255, 255, 0.035)';
+ roundRect(specCtx, padding, padding, usableWidth, usableHeight, 8);
+ specCtx.fill();
+
+ specCtx.font = '900 34px Segoe UI, Arial, sans-serif';
+ specCtx.fillStyle = '#f4f7fb';
+ specCtx.fillText(musicState.primary, padding + 10, padding + 44);
+
+ specCtx.font = '800 15px Segoe UI, Arial, sans-serif';
+ specCtx.fillStyle = 'rgba(244, 247, 251, 0.66)';
+ specCtx.fillText(`clarity ${Math.round(musicState.clarity * 100)}% · notes ${musicState.activeNotes.length} · ${musicState.settings.minHz}-${musicState.settings.maxHz} Hz`, padding + 12, padding + 72);
+
+ drawChromaStrip(specCtx, musicState.chroma, padding + 10, padding + 92, usableWidth - 20, 22);
+
+ visibleNotes.forEach((note, index) => {
+ const x = padding + index * (barWidth + gap);
+ const barHeight = Math.max(2, note.level * (usableHeight - 124));
+ const y = height - padding - barHeight;
+ const isTop = musicState.activeNotes.some(active => active.midi === note.midi);
+
+ specCtx.globalAlpha = note.level > 0 ? 0.92 : 0.2;
+ specCtx.fillStyle = noteColor(note.pitchClass, isTop ? 0.95 : 0.55);
+ roundRect(specCtx, x, y, barWidth, barHeight, Math.min(4, barWidth / 2));
+ specCtx.fill();
+
+ if (isTop && barWidth > 7) {
+ specCtx.save();
+ specCtx.translate(x + barWidth / 2, height - padding + 18);
+ specCtx.rotate(-Math.PI / 2);
+ specCtx.fillStyle = 'rgba(244, 247, 251, 0.78)';
+ specCtx.font = '800 11px Segoe UI, Arial, sans-serif';
+ specCtx.textAlign = 'right';
+ specCtx.fillText(note.name, 0, 3);
+ specCtx.restore();
+ }
+ });
+
+ specCtx.globalAlpha = 1;
+ const topText = musicState.activeNotes.slice(0, 6).map(note => `${note.name} ${Math.round(note.level * 100)}%`).join(' · ');
+ specCtx.font = '800 14px Segoe UI, Arial, sans-serif';
+ specCtx.fillStyle = 'rgba(244, 247, 251, 0.76)';
+ specCtx.fillText(topText || 'Загрузи трек и нажми play', padding + 12, height - 12);
+}
+
+function drawHistory(levels, analysis = getIdleAnalysis(), voiceState = getIdleState(), musicState = getIdleMusicState()) {
  const { width, height } = spectrogramCanvas;
  paintCanvasBackground(spectroCtx, width, height);
 
@@ -686,6 +983,11 @@ function drawHistory(levels, analysis = getIdleAnalysis(), voiceState = getIdleS
 
  if (displayMode === 'state') {
  drawStateHistory(width, height, voiceState);
+ return;
+ }
+
+ if (displayMode === 'music') {
+ drawMusicHistory(width, height, musicState);
  return;
  }
 
@@ -794,6 +1096,41 @@ function drawStateHistory(width, height, voiceState) {
  });
 }
 
+function drawMusicHistory(width, height, musicState) {
+ const padding = 34;
+ const visibleNotes = musicState.notes.filter(note => note.frequency >= musicState.settings.minHz && note.frequency <= musicState.settings.maxHz);
+ const usableWidth = width - padding * 2;
+ const usableHeight = height - padding * 2;
+ const rowHeight = usableHeight / Math.max(1, visibleNotes.length);
+ const columnWidth = usableWidth / MAX_HISTORY;
+ const startX = padding + usableWidth - musicHistory.length * columnWidth;
+ const noteIndex = new Map(visibleNotes.map((note, index) => [note.midi, index]));
+
+ drawGrid(spectroCtx, width, height, padding);
+
+ musicHistory.forEach((row, columnIndex) => {
+ row.forEach((level, globalIndex) => {
+ const note = musicNotes[globalIndex];
+ const rowIndex = noteIndex.get(note.midi);
+ if (rowIndex === undefined) return;
+
+ const x = startX + columnIndex * columnWidth;
+ const y = padding + rowIndex * rowHeight;
+ const alpha = 0.12 + Math.min(1, level) * 0.88;
+ spectroCtx.fillStyle = noteColor(note.pitchClass, alpha);
+ spectroCtx.fillRect(x, y, columnWidth + 0.5, Math.max(1.5, rowHeight - 0.5));
+ });
+ });
+
+ musicState.activeNotes.slice(0, 8).forEach((note, index) => {
+ const y = padding + 15 + index * 22;
+ spectroCtx.fillStyle = noteColor(note.pitchClass, 0.95);
+ spectroCtx.font = '900 14px Segoe UI, Arial, sans-serif';
+ spectroCtx.fillText(note.name, 10, y);
+ spectroCtx.fillText(`${Math.round(note.level * 100)}%`, width - 54, y);
+ });
+}
+
 function drawIdle() {
  const idleLevels = toneBands.map((_, index) => {
  const wave = Math.sin(index * 0.7) * 0.5 + 0.5;
@@ -801,8 +1138,9 @@ function drawIdle() {
  });
  const idleAnalysis = getIdleAnalysis();
  const idleState = getIdleState();
+ const idleMusic = getIdleMusicState();
 
- drawSpectrum(idleLevels, 100, idleAnalysis, idleState);
+ drawSpectrum(idleLevels, 100, idleAnalysis, idleState, idleMusic);
  spectrumHistory = Array.from({ length: 38 }, (_, y) => {
  return toneBands.map((_, x) => 12 + Math.max(0, Math.sin(x * 0.45 + y * 0.2)) * 38);
  });
@@ -823,9 +1161,17 @@ function drawIdle() {
  stability: 0.74
  };
  });
+ musicHistory = Array.from({ length: 38 }, (_, column) => {
+ return musicNotes.map((note, index) => {
+ const wave = Math.max(0, Math.sin(column * 0.18 + index * 0.21));
+ const chordBoost = [0, 4, 7].includes(note.pitchClass) ? 0.32 : 0;
+ return Math.min(1, wave * 0.18 + chordBoost);
+ });
+ });
  publishVoiceState(idleState);
- drawHistory(idleLevels, idleAnalysis, idleState);
- updateLevel(displayMode === 'state' ? idleState.certainty : 0);
+ publishMusicState(idleMusic);
+ drawHistory(idleLevels, idleAnalysis, idleState, idleMusic);
+ updateLevel(displayMode === 'state' ? idleState.certainty : displayMode === 'music' ? idleMusic.clarity : 0);
 }
 
 function buildToneGrid() {
@@ -849,7 +1195,7 @@ function selectTone(index) {
 }
 
 function setMode(mode) {
- displayMode = ['all', 'solo', 'harmonics', 'state'].includes(mode) ? mode : 'all';
+ displayMode = ['all', 'solo', 'harmonics', 'state', 'music'].includes(mode) ? mode : 'all';
  document.body.dataset.mode = displayMode;
  modeTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.mode === displayMode));
 
@@ -871,6 +1217,12 @@ function setMode(mode) {
  levelTitle.textContent = 'Надежность оценки';
  levelHint.textContent = 'акустическая подсказка для Max17';
  updateStateUI(latestVoiceState || getIdleState());
+ } else if (displayMode === 'music') {
+ spectrumLabel.textContent = 'ноты и спектр музыки';
+ historyLabel.textContent = 'история нот';
+ levelTitle.textContent = 'Чистота нот';
+ levelHint.textContent = 'после фильтра шума и сглаживания';
+ updateMusicUI(latestMusicState || getIdleMusicState());
  } else {
  spectrumLabel.textContent = '50 тонов';
  historyLabel.textContent = 'энергия по частотам';
@@ -912,10 +1264,22 @@ function updateStateUI(voiceState) {
  toneRange.textContent = `${Math.round(voiceState.certainty * 100)}% certainty`;
 }
 
+function updateMusicUI(musicState) {
+ toneNumber.textContent = 'Музыка';
+ toneNote.textContent = musicState.primary || 'no notes';
+ toneRange.textContent = `${Math.round(musicState.clarity * 100)}% clarity`;
+}
+
 function publishVoiceState(voiceState) {
  latestVoiceState = voiceState;
  window.__voiceState = voiceState;
  voiceStatePayload.textContent = JSON.stringify(voiceState);
+}
+
+function publishMusicState(musicState) {
+ latestMusicState = musicState;
+ window.__musicState = musicState;
+ musicPayload.textContent = JSON.stringify(musicState);
 }
 
 function updateLevel(value) {
@@ -934,6 +1298,14 @@ function getNearestNote(frequency) {
  const midi = Math.round(69 + 12 * Math.log2(frequency / 440));
  const octave = Math.floor(midi / 12) - 1;
  const note = noteNames[((midi % 12) + 12) % 12];
+
+ return `${note}${octave}`;
+}
+
+function getNoteNameFromMidi(midi) {
+ const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+ const note = noteNames[((midi % 12) + 12) % 12];
+ const octave = Math.floor(midi / 12) - 1;
 
  return `${note}${octave}`;
 }
@@ -981,6 +1353,33 @@ function drawFrequencyAxis(ctx, width, height, padding) {
  });
 
  ctx.restore();
+}
+
+function drawChromaStrip(ctx, chroma, x, y, width, height) {
+ const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+ const gap = 4;
+ const cellWidth = (width - gap * (chroma.length - 1)) / chroma.length;
+
+ chroma.forEach((level, index) => {
+ const cellX = x + index * (cellWidth + gap);
+ ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+ roundRect(ctx, cellX, y, cellWidth, height, 5);
+ ctx.fill();
+ ctx.fillStyle = noteColor(index, 0.22 + level * 0.78);
+ roundRect(ctx, cellX, y, cellWidth, height, 5);
+ ctx.fill();
+ ctx.fillStyle = 'rgba(244, 247, 251, 0.74)';
+ ctx.font = '800 10px Segoe UI, Arial, sans-serif';
+ ctx.textAlign = 'center';
+ ctx.fillText(names[index], cellX + cellWidth / 2, y + height - 7);
+ });
+
+ ctx.textAlign = 'left';
+}
+
+function noteColor(pitchClass, alpha = 1) {
+ const hue = (pitchClass * 31 + 150) % 360;
+ return `hsla(${hue}, 92%, 62%, ${alpha})`;
 }
 
 function frequencyToX(frequency, padding, usableWidth) {
@@ -1060,6 +1459,38 @@ function getIdleState() {
  spectralFlux: 0.08,
  stability: scores.stability
  },
+ timestamp: Date.now()
+ };
+}
+
+function getIdleMusicState() {
+ const settings = getMusicSettings();
+ const notes = musicNotes.map(note => {
+ const chordBoost = [0, 4, 7].includes(note.pitchClass) ? 0.44 : 0.05;
+ return {
+ ...note,
+ raw: chordBoost * 180,
+ level: note.frequency >= settings.minHz && note.frequency <= settings.maxHz ? chordBoost : 0
+ };
+ });
+ const activeNotes = notes
+ .filter(note => note.level > 0.1)
+ .sort((a, b) => b.level - a.level)
+ .slice(0, 8);
+ const chroma = Array.from({ length: 12 }, (_, pitchClass) => {
+ return clamp01(notes
+ .filter(note => note.pitchClass === pitchClass)
+ .reduce((sum, note) => sum + note.level, 0) / 2.4);
+ });
+
+ return {
+ labels: ['C4', 'E4', 'G4', 'C', 'E', 'G'],
+ primary: 'C / E / G',
+ clarity: 0.58,
+ notes,
+ activeNotes,
+ chroma,
+ settings,
  timestamp: Date.now()
  };
 }

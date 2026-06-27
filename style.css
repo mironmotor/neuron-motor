@@ -28,7 +28,8 @@ body {
 }
 
 button,
-input {
+input,
+audio {
  font: inherit;
 }
 
@@ -182,18 +183,78 @@ input[type="range"] {
 body[data-mode="harmonics"] .slider-wrap,
 body[data-mode="harmonics"] .tone-grid,
 body[data-mode="state"] .slider-wrap,
-body[data-mode="state"] .tone-grid {
+body[data-mode="state"] .tone-grid,
+body[data-mode="music"] .slider-wrap,
+body[data-mode="music"] .tone-grid {
  display: none;
 }
 
 body[data-mode="harmonics"] .tone-picker,
-body[data-mode="state"] .tone-picker {
+body[data-mode="state"] .tone-picker,
+body[data-mode="music"] .tone-picker {
  align-content: center;
 }
 
 body[data-mode="harmonics"] .tone-summary,
-body[data-mode="state"] .tone-summary {
+body[data-mode="state"] .tone-summary,
+body[data-mode="music"] .tone-summary {
  grid-template-columns: minmax(72px, 1fr) auto minmax(120px, 1fr);
+}
+
+.music-panel {
+ display: none;
+ gap: 12px;
+}
+
+body[data-mode="music"] .music-panel {
+ display: grid;
+}
+
+.file-loader {
+ display: grid;
+ grid-template-columns: 110px 1fr;
+ gap: 12px;
+ align-items: center;
+ color: var(--muted);
+ font-size: 0.92rem;
+}
+
+.file-loader input {
+ min-width: 0;
+ color: var(--muted);
+}
+
+audio {
+ width: 100%;
+ min-height: 38px;
+ filter: invert(1) hue-rotate(165deg) saturate(0.8);
+ opacity: 0.86;
+}
+
+.tune-grid {
+ display: grid;
+ grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+ gap: 8px;
+}
+
+.tune-grid label {
+ display: grid;
+ gap: 7px;
+ min-width: 0;
+ padding: 10px;
+ border: 1px solid var(--line);
+ border-radius: 7px;
+ background: rgba(255, 255, 255, 0.035);
+}
+
+.tune-grid span,
+.tune-grid strong {
+ color: var(--muted);
+ font-size: 0.76rem;
+}
+
+.tune-grid strong {
+ color: var(--text);
 }
 
 .tone-chip {
@@ -330,6 +391,10 @@ canvas {
  .tone-grid {
  grid-template-columns: repeat(10, minmax(0, 1fr));
  }
+
+ .tune-grid {
+ grid-template-columns: repeat(2, minmax(0, 1fr));
+ }
 }
 
 @media (max-width: 560px) {
@@ -353,5 +418,13 @@ canvas {
 
  .tone-grid {
  grid-template-columns: repeat(5, minmax(0, 1fr));
+ }
+
+ .file-loader {
+ grid-template-columns: 1fr;
+ }
+
+ .tune-grid {
+ grid-template-columns: 1fr;
  }
 }
