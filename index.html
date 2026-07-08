@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content="ZaVod — информационная страница с описанием процесса, поддержки и формой обратной связи."/>
+<meta name="theme-color" content="#060E04"/>
+<title>ZaVod — Измени свою жизнь</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+ --g0:#060E04;--g1:#0D1C09;--g2:#152A0E;--g3:#1F3D14;--g4:#2D5A1E;
+ --g5:#4A8B35;--g6:#6BBF47;--g7:#9DDE76;
+ --b0:#040E1A;--b1:#071828;--b2:#0E2E4A;--b3:#1A5080;
+ --b4:#2E8FCC;--b5:#4FC8FF;
+ --gold:#C8A84B;
+ --w0:#F0F4EE;--w1:#B8CEB0;--w2:#7A9070;--w3:#4A5E44;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--g0);color:var(--w0);font-family:'Inter',Arial,sans-serif;line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+::selection{background:rgba(107,191,71,.35);color:var(--w0);}
+a,button,input,select,textarea{font:inherit;}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--b5);outline-offset:3px;}
+.skip-link{position:fixed;top:10px;left:10px;z-index:500;transform:translateY(-150%);background:var(--b5);color:var(--b0);padding:10px 16px;text-decoration:none;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;transition:transform .2s;}
+.skip-link:focus{transform:translateY(0);}
+
+/* NAV */
+nav{
+ position:fixed;top:0;left:0;right:0;z-index:200;
+ display:flex;align-items:center;justify-content:space-between;
+ padding:0 32px;height:72px;gap:20px;
+ background:linear-gradient(180deg,rgba(6,14,4,.96) 0%,transparent 100%);
+ backdrop-filter:blur(8px);
+ border-bottom:1px solid rgba(107,191,71,.08);
+ transition:background .25s,border-color .25s,box-shadow .25s;
+}
+nav.nav-scrolled{background:rgba(6,14,4,.9);border-bottom-color:rgba(107,191,71,.18);box-shadow:0 14px 40px rgba(0,0,0,.22);}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--g6);text-decoration:none;display:flex;align-items:baseline;flex-shrink:0;min-width:180px;}
+.logo em{color:var(--b5);font-style:normal;}
+.logo sup{font-family:'Oswald',sans-serif;font-size:9px;font-weight:400;letter-spacing:2px;color:var(--w2);text-transform:uppercase;margin-left:6px;vertical-align:super;}
+.nav-mid{display:flex;gap:24px;flex:1;justify-content:center;}
+.nav-mid a{font-family:'Oswald',sans-serif;font-size:11px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--w2);text-decoration:none;transition:color .2s;white-space:nowrap;}
+.nav-mid a:hover{color:var(--g6);}
+.nav-right{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.nav-btn{font-family:'Oswald',sans-serif;font-size:12px;font-weight:600;letter-spacing:3px;text-transform:uppercase;background:var(--g6);color:var(--g0);padding:11px 28px;text-decoration:none;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);transition:background .2s;white-space:nowrap;}
+.nav-btn:hover{background:var(--g7);}
+
+/* HERO — новый дизайн */
+#hero{position:relative;min-height:100vh;display:flex;align-items:center;}
+
+.hero-bg{
+ position:absolute;inset:0;
+ background:url('img/hero-choice.png') center/cover no-repeat;
+ opacity:.78;
+ filter:saturate(.95) brightness(.7);
+}
+.hero-ov{
+ position:absolute;inset:0;
+ background:
+  linear-gradient(90deg,rgba(6,14,4,.96) 0%,rgba(6,14,4,.76) 43%,rgba(6,14,4,.24) 72%,rgba(6,14,4,.5) 100%),
+  linear-gradient(180deg,rgba(6,14,4,.78) 0%,rgba(6,14,4,.12) 45%,rgba(6,14,4,.88) 100%);
+}
+.hero-gr{
+ position:absolute;inset:0;
+ background-image:linear-gradient(rgba(107,191,71,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(107,191,71,.025) 1px,transparent 1px);
+ background-size:60px 60px;
+}
+.hero-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g6),transparent);opacity:0;animation:hscan 7s ease-in-out infinite 2s;}
+@keyframes hscan{0%{top:-2px;opacity:0}8%{opacity:.5}92%{opacity:.2}100%{top:100%;opacity:0}}
+
+/* Layout — чистый дизайн без фонового логотипа */
+.hero-inner{
+ position:relative;z-index:2;
+ width:100%;
+ max-width:1200px;
+ margin:0 auto;
+ padding:140px 60px 100px;
+ display:flex;
+ align-items:center;
+ min-height:calc(100vh - 72px);
+}
+.hero-left{
+ width:100%;
+ max-width:720px;
+}
+
+.h-eye{
+ font-family:'Oswald',sans-serif;
+ font-size:12px;font-weight:500;letter-spacing:3px;
+ text-transform:uppercase;color:var(--g6);
+ display:block;margin-bottom:28px;
+ padding-left:34px;position:relative;
+}
+.h-eye::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:24px;height:2px;background:var(--g6);}
+
+.h-title{
+ font-family:'Oswald',sans-serif;
+ font-size:clamp(44px,6.2vw,86px);
+ font-weight:700;
+ line-height:1.08;
+ letter-spacing:0;
+ color:var(--w0);
+ max-width:860px;
+ margin:0 0 26px;
+ display:block;
+ text-transform:none;
+}
+.h-title .ac{
+ -webkit-text-stroke:2.5px var(--g6);
+ color:transparent;
+ text-shadow:0 0 70px rgba(107,191,71,.25);
+ margin-left:10px;
+}
+
+.h-sub{
+ font-family:'Oswald',sans-serif;
+ font-size:clamp(18px,2.1vw,26px);
+ font-weight:300;
+ letter-spacing:0;
+ color:var(--w1);
+ margin:0 0 28px;
+ line-height:1.65;
+ max-width:640px;
+}
+.h-sub strong{color:var(--b5);font-weight:600;}
+
+.h-note{
+ max-width:660px;
+ margin:0 0 44px;
+ font-size:14px;
+ line-height:1.8;
+ color:var(--w3);
+ border-left:3px solid rgba(79,200,255,.45);
+ background:rgba(7,24,40,.35);
+ padding:18px 20px;
+}
+.h-pills{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0 36px;}
+.pill{font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;padding:9px 22px;display:inline-block;}
+.pg{background:var(--g6);color:var(--g0);}
+.pb{background:var(--b5);color:var(--b0);}
+.po{background:transparent;color:var(--w1);border:1px solid rgba(255,255,255,.2);}
+.h-acts{display:flex;align-items:center;gap:24px;flex-wrap:wrap;}
+.btn-p{display:inline-flex;align-items:center;gap:12px;font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;letter-spacing:3px;text-transform:uppercase;text-decoration:none;background:var(--g6);color:var(--g0);padding:16px 44px;clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);transition:all .25s;}
+.btn-p:hover{background:var(--g7);transform:translateY(-2px);}
+.btn-p svg{width:18px;height:18px;flex-shrink:0;}
+.hero-deadline{
+ max-width:360px;
+ padding:13px 16px;
+ background:rgba(255,176,57,.14);
+ border:1px solid rgba(255,176,57,.52);
+ color:#FFD27A;
+ font-size:12px;
+ line-height:1.55;
+ font-weight:700;
+ letter-spacing:.4px;
+ text-transform:uppercase;
+}
+
+/* TOP OFFER BLOCKS */
+#specialty{background:linear-gradient(180deg,var(--g0) 0%,var(--b0) 100%);}
+#specialty .s-ttl,#benefits .s-ttl{font-size:clamp(42px,5.5vw,72px);line-height:1.06;max-width:980px;}
+#specialty .s-sub{margin-bottom:42px;}
+.split-section{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:54px;
+ align-items:center;
+ max-width:1200px;
+ margin:0 auto;
+}
+.visual-panel{
+ position:relative;
+ min-height:500px;
+ overflow:hidden;
+ border:1px solid rgba(107,191,71,.14);
+ background:var(--g1);
+}
+.visual-panel::after{
+ content:'';
+ position:absolute;inset:0;
+ background:linear-gradient(180deg,transparent 35%,rgba(6,14,4,.78) 100%);
+ pointer-events:none;
+}
+.visual-panel img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;}
+.spec-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(107,191,71,.16);margin-top:28px;}
+.spec-card{background:rgba(6,14,4,.88);padding:28px 24px;min-height:210px;}
+.spec-card h3{font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--g6);margin-bottom:12px;}
+.spec-card p{font-size:14px;line-height:1.7;color:var(--w2);}
+.section-thesis{
+ margin-top:26px;
+ padding:18px 20px;
+ border-left:3px solid var(--b5);
+ background:rgba(7,24,40,.32);
+ color:var(--w1);
+ font-size:15px;
+ line-height:1.75;
+}
+#benefits{background:var(--g0);}
+.benefit-list{display:grid;gap:13px;margin-top:28px;}
+.benefit-item{
+ display:flex;gap:12px;align-items:flex-start;
+ color:var(--w1);
+ font-size:15px;
+ line-height:1.6;
+}
+.benefit-item::before{
+ content:'';
+ width:10px;height:10px;
+ margin-top:8px;
+ background:linear-gradient(135deg,var(--g6),var(--b5));
+ flex-shrink:0;
+}
+.trust-note{margin-top:28px;font-size:12px;line-height:1.7;color:var(--w3);}
+#choice{padding:0;background:var(--g0);}
+.choice-hero{
+ position:relative;
+ min-height:84vh;
+ display:flex;
+ align-items:center;
+ overflow:hidden;
+}
+.choice-bg{position:absolute;inset:0;background:url('img/door-choice.png') center/cover no-repeat;filter:brightness(.72) saturate(.9);}
+.choice-ov{position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,14,4,.94) 0%,rgba(6,14,4,.52) 48%,rgba(6,14,4,.78) 100%);}
+.choice-content{position:relative;z-index:2;width:min(1200px,100%);margin:0 auto;padding:110px 60px;}
+.choice-title{font-family:'Oswald',sans-serif;font-size:clamp(44px,7vw,92px);font-weight:700;line-height:1.08;letter-spacing:0;color:var(--w0);max-width:760px;margin-bottom:24px;}
+.choice-text{max-width:560px;color:var(--w1);font-size:18px;line-height:1.75;margin-bottom:34px;}
+.choice-warning{
+ display:inline-block;
+ max-width:560px;
+ padding:16px 20px;
+ background:rgba(255,176,57,.15);
+ border:1px solid rgba(255,176,57,.5);
+ color:#FFD27A;
+ font-family:'Oswald',sans-serif;
+ font-size:15px;
+ font-weight:600;
+ letter-spacing:1px;
+ text-transform:uppercase;
+}
+
+/* SCROLL HINT */
+.h-scroll{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:4;}
+.h-scroll span{font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:4px;color:var(--w3);text-transform:uppercase;}
+.h-line{width:1px;height:48px;background:linear-gradient(180deg,var(--g6),transparent);animation:hl 2s ease-in-out infinite;}
+@keyframes hl{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* SECTIONS */
+section{padding:100px 60px;position:relative;scroll-margin-top:90px;}
+#hero{padding:0;}
+.container{width:min(1200px,100%);margin:0 auto;}
+.s-eye{font-family:'Oswald',sans-serif;font-size:10px;font-weight:500;letter-spacing:5px;text-transform:uppercase;color:var(--g6);display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+.s-eye::before{content:'';width:28px;height:2px;background:var(--g6);}
+.s-ttl{font-family:'Bebas Neue',sans-serif;font-size:clamp(50px,7vw,88px);letter-spacing:2px;line-height:1;color:var(--w0);margin-bottom:12px;}
+.s-sub{font-size:16px;color:var(--w2);line-height:1.75;max-width:520px;margin-bottom:60px;}
+
+/* WHY */
+#why{background:var(--g0);}
+.why-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:rgba(107,191,71,.07);max-width:1200px;}
+.wc{background:var(--g0);padding:52px 44px;position:relative;overflow:hidden;transition:background .3s,transform .3s,box-shadow .3s;}
+.wc:hover{background:rgba(26,58,15,.38);transform:translateY(-3px);box-shadow:0 20px 50px rgba(0,0,0,.22);}
+.wc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--g6),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s;}
+.wc:hover::before{transform:scaleX(1);}
+.wc-n{font-family:'Bebas Neue',sans-serif;font-size:80px;letter-spacing:2px;color:rgba(107,191,71,.05);position:absolute;top:12px;right:20px;line-height:1;transition:color .3s;}
+.wc:hover .wc-n{color:rgba(107,191,71,.09);}
+.wc-ic{width:52px;height:52px;margin-bottom:26px;background:linear-gradient(135deg,var(--g3),var(--b2));display:flex;align-items:center;justify-content:center;clip-path:polygon(7px 0%,100% 0%,calc(100% - 7px) 100%,0% 100%);}
+.wc-ic svg{width:24px;height:24px;stroke:var(--g6);fill:none;stroke-width:1.5;}
+.wc h3{font-family:'Oswald',sans-serif;font-size:19px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--w0);margin-bottom:13px;}
+.wc p{font-size:15px;line-height:1.72;color:var(--w2);}
+
+/* NUMBERS */
+#nums{background:linear-gradient(180deg,var(--g0) 0%,var(--b0) 100%);padding:0 60px 100px;}
+.num-row{display:flex;max-width:1000px;border:1px solid rgba(107,191,71,.14);}
+.nb{flex:1;padding:60px 40px;border-right:1px solid rgba(107,191,71,.09);position:relative;text-align:center;}
+.nb:last-child{border-right:none;}
+.nb::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--g6),var(--b5));}
+.nv{font-family:'Bebas Neue',sans-serif;font-size:clamp(58px,9vw,100px);letter-spacing:2px;line-height:1;background:linear-gradient(135deg,var(--g6),var(--b5));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.nu{font-family:'Oswald',sans-serif;font-size:15px;font-weight:300;letter-spacing:2px;color:var(--b5);margin:4px 0 10px;}
+.nl{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--w3);}
+
+/* PROCESS */
+#process{background:linear-gradient(180deg,var(--b0) 0%,var(--g0) 100%);}
+.proc-wrap{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:start;max-width:1200px;}
+.proc-photo{position:sticky;top:120px;height:520px;overflow:hidden;}
+.pp-img{width:100%;height:100%;background:url('F1.png') center/cover no-repeat;filter:brightness(.65) saturate(.8);}
+.pp-ov{position:absolute;inset:0;background:linear-gradient(135deg,rgba(7,24,40,.65),rgba(13,28,9,.45));}
+.pp-lbl{position:absolute;bottom:32px;left:32px;}
+.pp-lbl em{display:block;font-family:'Oswald',sans-serif;font-size:10px;font-weight:400;font-style:normal;letter-spacing:5px;color:var(--g6);margin-bottom:6px;}
+.pp-lbl span{font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:3px;color:var(--w0);text-shadow:0 2px 16px rgba(0,0,0,.8);}
+.steps{display:flex;flex-direction:column;}
+.step{display:flex;gap:28px;align-items:flex-start;padding:30px 0;border-bottom:1px solid rgba(107,191,71,.07);opacity:0;transform:translateX(20px);transition:opacity .6s,transform .6s,background .25s;}
+.step.vis{opacity:1;transform:translateX(0);}
+.step:hover{background:linear-gradient(90deg,rgba(107,191,71,.055),transparent);}
+.step:last-child{border-bottom:none;}
+.sn{width:54px;height:54px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--g0);background:var(--g6);clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);}
+.sb h3{font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--w0);margin-bottom:8px;}
+.sb p{font-size:14px;color:var(--w2);line-height:1.65;}
+.st{font-family:'Oswald',sans-serif;font-size:10px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--b5);margin-top:8px;}
+
+/* MANAGER CARD */
+.mgr-card{
+ margin-top:48px;
+ display:flex;align-items:stretch;gap:0;
+ border:1px solid rgba(107,191,71,.22);
+ overflow:hidden;background:rgba(13,28,9,.7);
+ backdrop-filter:blur(8px);
+}
+.mgr-photo{
+ width:120px;min-height:130px;flex-shrink:0;
+ background:url('111.jpeg') center top/cover no-repeat;
+}
+.mgr-body{padding:20px 22px;flex:1;}
+.mgr-tag{font-family:'Oswald',sans-serif;font-size:9px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--g6);margin-bottom:6px;}
+.mgr-name{font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;color:var(--w0);margin-bottom:4px;}
+.mgr-status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--w2);margin-bottom:16px;}
+.mgr-dot{width:8px;height:8px;border-radius:50%;background:#25D366;flex-shrink:0;animation:dotpulse 2s infinite;}
+@keyframes dotpulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(37,211,102,.4)}70%{box-shadow:0 0 0 6px rgba(37,211,102,0)}}
+
+/* AFTER */
+#after{padding:0;}
+.ah{position:relative;min-height:88vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.ah-photo{position:absolute;inset:0;background:url('img/after-support.jpg') center/cover no-repeat;transform:scale(1.06);transition:transform 10s ease;}
+.ah:hover .ah-photo{transform:scale(1);}
+.ah-ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,14,4,.88) 0%,rgba(6,14,4,.55) 40%,rgba(6,14,4,.92) 100%);}
+.ah-cnt{position:relative;z-index:2;text-align:center;padding:80px 60px;}
+.ah-big{font-family:'Bebas Neue',sans-serif;font-size:clamp(70px,15vw,192px);letter-spacing:4px;line-height:.86;color:var(--w0);display:block;}
+.ah-big em{display:block;font-style:normal;-webkit-text-stroke:2px var(--g6);color:transparent;text-shadow:0 0 80px rgba(107,191,71,.12);}
+.ah-txt{font-family:'Oswald',sans-serif;font-size:18px;font-weight:300;letter-spacing:2px;color:var(--w1);margin-top:30px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.65;}
+.ah-line{width:64px;height:2px;background:linear-gradient(90deg,var(--g6),var(--b5));margin:28px auto 0;}
+.af-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(107,191,71,.05);}
+.ac{background:var(--g0);padding:44px 32px;transition:background .3s;position:relative;}
+.ac:hover{background:rgba(26,58,15,.32);}
+.ac::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--b5),transparent);opacity:0;transition:opacity .3s;}
+.ac:hover::before{opacity:1;}
+.ac-ic{width:48px;height:48px;margin-bottom:20px;background:linear-gradient(135deg,var(--b2),var(--g3));display:flex;align-items:center;justify-content:center;}
+.ac-ic svg{width:22px;height:22px;stroke:var(--b5);fill:none;stroke-width:1.5;}
+.ac h4{font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--w0);margin-bottom:10px;}
+.ac p{font-size:13px;color:var(--w2);line-height:1.65;}
+
+/* APPLY */
+#apply{background:linear-gradient(135deg,var(--g1) 0%,var(--b0) 100%);border-top:1px solid rgba(107,191,71,.1);}
+.ap-grid{display:grid;grid-template-columns:1fr 480px;gap:80px;align-items:start;max-width:1200px;}
+.ap-l p{font-size:16px;color:var(--w2);line-height:1.78;margin-bottom:36px;}
+.ct-list{display:flex;flex-direction:column;gap:18px;}
+.ct{display:flex;align-items:center;gap:16px;font-size:14px;color:var(--w2);}
+.ct svg{width:18px;height:18px;stroke:var(--g5);fill:none;stroke-width:1.5;flex-shrink:0;}
+.ct a{color:var(--g6);text-decoration:none;}
+.ct a:hover{color:var(--g7);}
+.fbox{background:rgba(6,14,4,.7);border:1px solid rgba(107,191,71,.16);padding:48px 40px;backdrop-filter:blur(12px);}
+.fhead{font-family:'Oswald',sans-serif;font-size:20px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--w0);margin-bottom:30px;padding-bottom:18px;border-bottom:1px solid rgba(107,191,71,.1);display:flex;align-items:center;gap:12px;}
+.fhead::before{content:'';width:4px;height:22px;background:var(--g6);flex-shrink:0;}
+.fg{margin-bottom:16px;}
+.fg label{display:block;font-family:'Oswald',sans-serif;font-size:10px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--w3);margin-bottom:8px;}
+.fg input,.fg select,.fg textarea{width:100%;padding:13px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(107,191,71,.14);color:var(--w0);font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none;}
+.fg input::placeholder,.fg textarea::placeholder{color:var(--w3);}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--g6);}
+.fg select option{background:#0d1c09;}
+.fg textarea{resize:vertical;min-height:90px;}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.sbtn{width:100%;padding:17px;font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;letter-spacing:3px;text-transform:uppercase;background:var(--g6);color:var(--g0);border:none;cursor:pointer;margin-top:8px;clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);transition:all .25s;}
+.sbtn:hover{background:var(--g7);transform:translateY(-1px);}
+.fnote{font-size:11px;color:var(--w3);margin-top:12px;text-align:center;line-height:1.6;}
+.form-error{display:none;margin:0 0 16px;padding:12px 14px;border:1px solid rgba(255,111,97,.35);background:rgba(255,111,97,.08);color:#ffb5ad;font-size:13px;line-height:1.55;}
+.honeypot{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;}
+.fok{display:none;text-align:center;padding:36px 0;}
+.fok svg{width:52px;height:52px;stroke:var(--g6);fill:none;stroke-width:1.5;margin-bottom:18px;}
+.fok h3{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:2px;color:var(--g6);margin-bottom:12px;}
+.fok p{font-size:15px;color:var(--w2);line-height:1.6;}
+
+/* FOOTER */
+footer{background:var(--g0);border-top:1px solid rgba(107,191,71,.07);padding:64px 60px 36px;}
+.ft{display:grid;grid-template-columns:2fr 1fr;gap:60px;max-width:1200px;padding-bottom:48px;border-bottom:1px solid rgba(107,191,71,.06);margin-bottom:30px;}
+.flogo{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:5px;color:var(--g6);text-decoration:none;display:block;margin-bottom:14px;}
+.flogo em{color:var(--b5);font-style:normal;}
+.fdesc{font-size:13px;color:var(--w3);line-height:1.72;max-width:280px;}
+.fc h5{font-family:'Oswald',sans-serif;font-size:10px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--w2);margin-bottom:18px;}
+.fc a{display:block;font-size:13px;color:var(--w3);text-decoration:none;margin-bottom:10px;transition:color .2s;}
+.fc a:hover{color:var(--g6);}
+.fb{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--w3);max-width:1200px;}
+
+/* REVEAL UTILITY */
+.rv{opacity:0;transform:translateY(18px);transition:opacity .6s,transform .6s,background .3s;}
+.rv.vis{opacity:1;transform:translateY(0);}
+
+/* SOLDIERS */
+#soldiers{background:linear-gradient(180deg,var(--g0) 0%,var(--b0) 100%);padding:90px 60px;}
+.soldiers-grid{
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:4px;
+ max-width:1200px;
+ margin:0 auto;
+}
+.soldier-card{
+ position:relative;
+ overflow:hidden;
+ aspect-ratio:4/3;
+ background:var(--g1);
+}
+.soldier-card.tall{
+ grid-row:span 2;
+ aspect-ratio:auto;
+}
+.soldier-img{
+ width:100%;height:100%;
+ background-size:cover;background-position:center;
+ filter:saturate(.75) brightness(.75);
+ transition:transform .6s ease,filter .4s ease;
+}
+.soldier-card:hover .soldier-img{transform:scale(1.06);filter:saturate(1) brightness(.9);}
+.soldier-overlay{
+ position:absolute;inset:0;
+ background:linear-gradient(180deg,transparent 45%,rgba(6,14,4,.88) 100%);
+}
+.soldier-tag{
+ position:absolute;top:12px;left:12px;
+ font-family:'Oswald',sans-serif;font-size:9px;font-weight:600;
+ letter-spacing:3px;text-transform:uppercase;
+ color:var(--g0);background:var(--g6);
+ padding:4px 10px;
+}
+.soldier-label{
+ position:absolute;bottom:14px;left:16px;right:16px;
+ font-family:'Oswald',sans-serif;font-size:13px;font-weight:500;
+ letter-spacing:2px;text-transform:uppercase;color:var(--w0);
+}
+
+/* GALLERY → ОТЗЫВЫ */
+#gallery{background:var(--g0);padding:80px 60px;}
+.reviews-grid{
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:24px;
+ max-width:1200px;
+ margin:0 auto;
+}
+.review-card{
+ background:rgba(13,28,9,.6);
+ border:1px solid rgba(107,191,71,.12);
+ padding:32px 28px;
+ display:flex;flex-direction:column;
+ transition:transform .3s,border-color .3s,background .3s;
+}
+.review-card:hover{transform:translateY(-4px);border-color:rgba(107,191,71,.3);background:rgba(26,58,15,.4);}
+.review-stars{display:flex;gap:3px;margin-bottom:18px;}
+.review-stars svg{width:16px;height:16px;fill:var(--gold);}
+.review-text{
+ font-size:14px;color:var(--w1);line-height:1.75;
+ margin-bottom:24px;flex:1;
+ font-style:italic;
+}
+.review-text::before{content:'«';color:var(--g6);font-size:28px;line-height:0;vertical-align:-6px;margin-right:4px;font-style:normal;}
+.review-text::after{content:'»';color:var(--g6);font-size:28px;line-height:0;vertical-align:-12px;margin-left:3px;font-style:normal;}
+.review-author{display:flex;align-items:center;gap:14px;border-top:1px solid rgba(107,191,71,.1);padding-top:18px;}
+.review-avatar{
+ width:52px;height:52px;border-radius:50%;
+ background-size:cover;background-position:center;
+ border:2px solid rgba(107,191,71,.3);flex-shrink:0;
+}
+.review-name{font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;color:var(--w0);margin-bottom:2px;}
+.review-loc{font-size:11px;color:var(--w3);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.review-loc::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--g6);}
+
+@media(max-width:1024px){
+ nav{padding:0 24px;}
+ .nav-mid{gap:14px;}
+ .nav-mid a{font-size:10px;letter-spacing:1.5px;}
+ .nav-btn{padding:10px 18px;letter-spacing:2px;}
+ .hero-inner{padding:120px 40px 80px;}
+ .hero-left{max-width:700px;}
+ .h-title{font-size:clamp(44px,6.6vw,72px);letter-spacing:0;}
+ .split-section{grid-template-columns:1fr;gap:34px;}
+ .visual-panel{min-height:430px;}
+ .proc-wrap,.ap-grid{gap:44px;}
+ .ap-grid{grid-template-columns:1fr 420px;}
+ .af-cards{grid-template-columns:repeat(2,1fr);}
+}
+
+@media(max-width:768px){
+ nav{padding:0 16px;height:64px;gap:10px;}
+ .logo{font-size:28px;min-width:0;}
+ .logo sup{display:none;}
+ .nav-mid{display:none;}
+ .nav-right{gap:8px;}
+ .nav-btn{display:none;}
+ section{padding:64px 24px;}
+ .hero-inner{padding:110px 24px 70px;}
+ .h-title{font-size:clamp(38px,9vw,58px);letter-spacing:0;}
+ .h-sub{font-size:clamp(17px,4.5vw,22px);}
+ .h-acts{gap:16px;}
+ .btn-p{width:100%;justify-content:center;padding:15px 28px;}
+ .hero-deadline{max-width:none;width:100%;}
+ .spec-cards{grid-template-columns:1fr;}
+ .spec-card{min-height:auto;}
+ .visual-panel{min-height:320px;}
+ .choice-content{padding:90px 24px;}
+ .choice-title{font-size:clamp(38px,10vw,62px);}
+ .choice-text{font-size:16px;}
+ .why-grid{grid-template-columns:1fr;}
+ .wc{padding:38px 28px;}
+ .proc-wrap{grid-template-columns:1fr;}
+ .proc-photo{display:none;}
+ .mgr-card{display:flex;}
+ .mgr-photo{width:90px;min-height:110px;}
+ .af-cards{grid-template-columns:1fr 1fr;}
+ .soldiers-grid{grid-template-columns:1fr 1fr;gap:3px;}
+ .soldier-card.tall{grid-row:span 1;aspect-ratio:4/3;}
+ .reviews-grid{grid-template-columns:1fr 1fr;gap:16px;}
+ .review-card{padding:24px 20px;}
+ .ap-grid{grid-template-columns:1fr;}
+ .ft{grid-template-columns:1fr;}
+ .num-row{flex-direction:column;}
+ .nb{border-right:none;border-bottom:1px solid rgba(107,191,71,.08);}
+ .fg-row{grid-template-columns:1fr;}
+ footer{padding:48px 20px 24px;}
+ #soldiers,#gallery{padding:60px 16px;}
+ .fb{gap:12px;flex-direction:column;align-items:flex-start;}
+}
+
+@media(max-width:480px){
+ section{padding:56px 18px;}
+ .hero-inner{padding:100px 20px 60px;}
+ .h-title{font-size:clamp(34px,10.5vw,48px);letter-spacing:0;}
+ .h-sub{font-size:16px;}
+ .h-note{font-size:13px;padding:15px 17px;}
+ .hero-deadline{font-size:11px;}
+ .visual-panel{min-height:260px;}
+ .choice-content{padding:78px 20px;}
+ .choice-title{font-size:clamp(34px,11vw,48px);}
+ .h-pills{gap:8px;}
+ .pill{width:100%;text-align:center;}
+ .af-cards,.soldiers-grid,.reviews-grid{grid-template-columns:1fr;}
+ .fbox{padding:32px 22px;}
+ .step{gap:16px;}
+ .step,.step.vis{transform:none;}
+ .sn{width:44px;height:44px;font-size:18px;}
+}
+
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto;}
+ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important;}
+}
+</style>
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '2216629778842147');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=2216629778842147&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
+</head>
+<body>
+<a class="skip-link" href="#main">К содержанию</a>
+
+<nav aria-label="Основная навигация">
+ <a href="#" class="logo">Za<em>Vod</em><sup>рекрутинг</sup></a>
+ <div class="nav-mid">
+ <a href="#specialty">Специальность</a>
+ <a href="#benefits">Выплаты</a>
+ <a href="#choice">Выбор</a>
+ <a href="#process">Процесс</a>
+ <a href="#soldiers">Солдаты</a>
+ <a href="#apply">Заявка</a>
+ </div>
+ <div class="nav-right">
+ <a href="#apply" class="nav-btn">Узнать условия</a>
+ </div>
+</nav>
+
+<main id="main">
+<section id="hero">
+ <div class="hero-bg"></div>
+ <div class="hero-ov"></div>
+ <div class="hero-gr"></div>
+ <div class="hero-scan"></div>
+ <div class="hero-inner">
+ <div class="hero-left">
+ <div class="h-eye">ZAVOD: прокачиваем реальность</div>
+ <h1 class="h-title">Тебя могут мобилизовать — и ты никуда не денешься.</h1>
+ <p class="h-sub">Контракт = служба по специальности, выплаты, экипировка и отношение. <strong>Мобилизация = куда поставят, тем и будешь.</strong></p>
+ <div class="h-acts">
+ <a href="#benefits" class="btn-p">Узнать условия контракта
+ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+ </a>
+ <div class="hero-deadline">Окно открыто только ДО визита в военкомат. Дальше решают без тебя.</div>
+ </div>
+ </div>
+ </div>
+ <div class="h-scroll">
+ <div class="h-line"></div>
+ <span>скролл</span>
+ </div>
+</section>
+
+<!-- SPECIALTY -->
+<section id="specialty">
+ <div class="container">
+ <p class="s-eye">Специальность = безопасность</p>
+ <h2 class="s-ttl">Служба по специальности — это безопаснее, чем “куда поставят”</h2>
+ <p class="s-sub">Когда у тебя есть профиль, у тебя есть понятная функция, обучение и место в системе.</p>
+ <div class="visual-panel" style="min-height:520px;margin-bottom:1px;">
+ <img src="img/specialties.png" alt="Механик, водитель и связист на службе по специальности"/>
+ </div>
+ <div class="spec-cards">
+ <div class="spec-card rv"><h3>Механик</h3><p>Ремонт и обслуживание техники — стабильная роль, обучение, надбавки.</p></div>
+ <div class="spec-card rv"><h3>Водитель</h3><p>Управление спецтехникой — востребованная специальность, развитие.</p></div>
+ <div class="spec-card rv"><h3>Связист</h3><p>Современные системы связи — работа с техникой, карьерный рост.</p></div>
+ </div>
+ <p class="section-thesis">Когда ты идёшь по профессии, у тебя есть понятная задача и отношение командования. Это снижает неопределённость и риск оказаться в роли, к которой ты не готов.</p>
+ </div>
+</section>
+
+<!-- BENEFITS -->
+<section id="benefits">
+ <div class="split-section">
+ <div>
+ <p class="s-eye">Деньги и отношение</p>
+ <h2 class="s-ttl">Выплаты, экипировка, обучение — не на словах, а в документах</h2>
+ <div class="benefit-list">
+ <div class="benefit-item">Денежное довольствие и надбавки по специальности</div>
+ <div class="benefit-item">Полная экипировка и снаряжение</div>
+ <div class="benefit-item">Обучение и повышение квалификации</div>
+ <div class="benefit-item">Социальные гарантии и льготы</div>
+ </div>
+ <p class="trust-note">Условия закреплены в контракте о прохождении военной службы и нормативных актах Минобороны РФ.</p>
+ </div>
+ <div class="visual-panel">
+ <img src="img/benefits-docs.png" alt="Контракт, документы, экипировка и выплаты"/>
+ </div>
+ </div>
+</section>
+
+<!-- CHOICE -->
+<section id="choice">
+ <div class="choice-hero">
+ <div class="choice-bg"></div>
+ <div class="choice-ov"></div>
+ <div class="choice-content">
+ <p class="s-eye">Дверь закрывается</p>
+ <h2 class="choice-title">Сделай выбор сейчас. Потом решать будут за тебя.</h2>
+ <p class="choice-text">Сходил в военкомат или попал под мобилизацию — контракт уже не подпишешь на своих условиях. Пока можешь выбирать, выбирай путь по специальности.</p>
+ <div class="choice-warning">Окно выбора открыто до визита в военкомат.</div>
+ </div>
+ </div>
+</section>
+
+<!-- WHY -->
+<section id="why">
+ <div class="container">
+ <p class="s-eye">Почему это работает</p>
+ <h2 class="s-ttl">Мы уже помогли<br/>сотням кандидатов</h2>
+ <p class="s-sub">Структурированный процесс. Реальные деньги. Реальная поддержка на каждом шаге.</p>
+ <div class="why-grid">
+ <div class="wc rv">
+ <div class="wc-n">01</div>
+ <div class="wc-ic"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+ <h3>Мы покрываем все расходы</h3>
+ <p>Виза, медосмотр, перелёт до Москвы — полностью за наш счёт. Ты не тратишь ничего.</p>
+ </div>
+ <div class="wc rv">
+ <div class="wc-n">02</div>
+ <div class="wc-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/><polyline points="16 11 18 13 22 9"/></svg></div>
+ <h3>Только серьёзные кандидаты</h3>
+ <p>Мы отбираем людей, готовых к делу. Не для всех. Если сомневаешься — не подавай.</p>
+ </div>
+ <div class="wc rv">
+ <div class="wc-n">03</div>
+ <div class="wc-ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg></div>
+ <h3>Ограниченные места в неделю</h3>
+ <p>Мы принимаем ограниченное число кандидатов каждую неделю. Твоё место не гарантировано. Действуй сейчас.</p>
+ </div>
+ <div class="wc rv">
+ <div class="wc-n">04</div>
+ <div class="wc-ic"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+ <h3>Полная поддержка</h3>
+ <p>Менеджеры сопровождают тебя 5 дней в неделю до отъезда. Документы, SIM, жильё — мы обо всём позаботимся.</p>
+ </div>
+ </div>
+ </div>
+</section>
+
+<!-- NUMBERS -->
+<section id="nums">
+ <div class="container">
+ <div class="num-row">
+ <div class="nb rv">
+ <div class="nv">2,43 млн ₽</div>
+ <div class="nu">единоразово</div>
+ <div class="nl">Подъёмные</div>
+ </div>
+ <div class="nb rv">
+ <div class="nv">201 тыс. ₽</div>
+ <div class="nu">в месяц</div>
+ <div class="nl">Ежемесячный доход</div>
+ </div>
+ <div class="nb rv">
+ <div class="nv">0 ₽</div>
+ <div class="nu">Твоих расходов</div>
+ <div class="nl">Мы платим за всё</div>
+ </div>
+ </div>
+ </div>
+</section>
+
+<!-- PROCESS -->
+<section id="process">
+ <div class="container">
+ <div class="proc-wrap">
+ <div class="proc-photo">
+ <div class="pp-img"></div>
+ <div class="pp-ov"></div>
+ <div class="pp-lbl">
+ <em>от заявки до вылета</em>
+ <span>2–3 недели</span>
+ </div>
+ </div>
+ <div>
+ <p class="s-eye">Как это работает</p>
+ <h2 class="s-ttl">Простой<br/>процесс</h2>
+ <div class="steps">
+ <div class="step"><div class="sn">01</div><div class="sb"><h3>Подай заявку</h3><p>Заполни форму. Расскажи о себе. Мы ответим в течение 24 часов.</p><div class="st">День 1</div></div></div>
+ <div class="step"><div class="sn">02</div><div class="sb"><h3>Верификация</h3><p>Проверяем твои данные и документы. Быстро и конфиденциально.</p><div class="st">День 2–3</div></div></div>
+ <div class="step"><div class="sn">03</div><div class="sb"><h3>Медосмотр</h3><p>Быстрое медицинское обследование. Всё организуем сами.</p><div class="st">День 5–7</div></div></div>
+ <div class="step"><div class="sn">04</div><div class="sb"><h3>Виза и билеты</h3><p>Мы всё организуем. Тебе нужно только подготовиться к отъезду.</p><div class="st">День 10–14</div></div></div>
+ <div class="step"><div class="sn">05</div><div class="sb"><h3>Отъезд</h3><p>Встречаем в аэропорту. С этого момента — полная поддержка нашей команды.</p><div class="st">День 14–21</div></div></div>
+ </div>
+
+ <!-- MANAGER CARD -->
+ <div class="mgr-card">
+ <div class="mgr-photo"></div>
+ <div class="mgr-body">
+ <div class="mgr-tag">Ваш персональный менеджер</div>
+ <div class="mgr-name">Анна — оператор поддержки</div>
+ <div class="mgr-status">
+ <div class="mgr-dot"></div>
+ <span>Онлайн · Отвечает быстро · 5 дней в неделю</span>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+</section>
+
+<!-- AFTER -->
+<section id="after">
+ <div class="ah">
+ <div class="ah-photo"></div>
+ <div class="ah-ov"></div>
+ <div class="ah-cnt">
+ <span class="ah-big">ВЫ<br/><em>НЕ ОДНИ</em></span>
+ <p class="ah-txt">Наша команда встречает вас в аэропорту. Помогаем со всем — SIM-карта, жильё, документы. Полное сопровождение на протяжении всего контракта.</p>
+ <div class="ah-line"></div>
+ </div>
+ </div>
+ <div class="af-cards">
+ <div class="ac rv"><div class="ac-ic"><svg viewBox="0 0 24 24"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19.5 2.5c-1.5-1.5-3.5-1.5-5 0l-3.5 3.5L3 4.2C2.5 4 2 4.2 1.7 4.7L1.5 5.1c-.4.6-.2 1.3.3 1.7L6 10l-1 2H2l-1 1 3 2 2 3 1-1v-3l2-1 3.3 4.3c.3.5 1 .8 1.7.5l.5-.2c.5-.3.7-.8.3-1.4z"/></svg></div><h4>Встреча в аэропорту</h4><p>Встречаем по прилёту. Ничего не нужно искать самому.</p></div>
+ <div class="ac rv"><div class="ac-ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div><h4>SIM-карта</h4><p>Связь с семьёй и командой — сразу по прилёту.</p></div>
+ <div class="ac rv"><div class="ac-ic"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><h4>Жильё</h4><p>Безопасное и комфортное размещение организовано заранее.</p></div>
+ <div class="ac rv"><div class="ac-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><h4>Документы</h4><p>Полное сопровождение по оформлению всех бумаг и регистрации.</p></div>
+ </div>
+</section>
+
+<!-- SOLDIERS -->
+<section id="soldiers">
+ <div class="container">
+ <p class="s-eye">Наши ребята</p>
+ <h2 class="s-ttl">Солдаты<br/>ВС России</h2>
+ <p class="s-sub" style="margin-bottom:40px;">Реальные люди, реальная служба. Каждый из них однажды принял решение и стал опорой для себя и своей семьи.</p>
+ </div>
+ <div class="soldiers-grid">
+ <div class="soldier-card tall">
+ <div class="soldier-img" style="background-image:url('17.jpg');"></div>
+ <div class="soldier-overlay"></div>
+ <div class="soldier-tag">В строю</div>
+ <div class="soldier-label">Боевая готовность</div>
+ </div>
+ <div class="soldier-card">
+ <div class="soldier-img" style="background-image:url('18.jpg');"></div>
+ <div class="soldier-overlay"></div>
+ <div class="soldier-tag">Экипировка</div>
+ <div class="soldier-label">Полное снаряжение</div>
+ </div>
+ <div class="soldier-card">
+ <div class="soldier-img" style="background-image:url('19.jpg');"></div>
+ <div class="soldier-overlay"></div>
+ <div class="soldier-tag">Команда</div>
+ <div class="soldier-label">Братство</div>
+ </div>
+ <div class="soldier-card">
+ <div class="soldier-img" style="background-image:url('20.jpg');"></div>
+ <div class="soldier-overlay"></div>
+ <div class="soldier-tag">Тренировки</div>
+ <div class="soldier-label">Ежедневные тренировки</div>
+ </div>
+ <div class="soldier-card">
+ <div class="soldier-img" style="background-image:url('21.jpg');"></div>
+ <div class="soldier-overlay"></div>
+ <div class="soldier-tag">Служба</div>
+ <div class="soldier-label">Выполнение задач</div>
+ </div>
+ </div>
+</section>
+
+<!-- ОТЗЫВЫ -->
+<section id="gallery">
+ <div class="container">
+ <p class="s-eye">Истории людей</p>
+ <h2 class="s-ttl">Реальные<br/>отзывы</h2>
+ <p class="s-sub" style="margin-bottom:40px;">Реальные люди, которые прошли этот путь. Каждый из них когда-то принял решение и изменил свою жизнь и жизнь своей семьи</p>
+ </div>
+ <div class="reviews-grid">
+
+ <div class="review-card">
+ <div class="review-stars"><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg></div>
+ <p class="review-text">Думал, что это всё сказки. Но когда прилетел и получил первые деньги — поверил. Менеджеры реально помогли со всем: документы, жильё, связь. Сейчас работаю уже полгода.</p>
+ <div class="review-author">
+ <div class="review-avatar" style="background-image:url('img/review-1.jpg');"></div>
+ <div>
+ <div class="review-name">Budi Santoso</div>
+ <div class="review-loc">Джакарта, Индонезия</div>
+ </div>
+ </div>
+ </div>
+
+ <div class="review-card">
+ <div class="review-stars"><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg></div>
+ <p class="review-text">Самое сложное — решиться. Я боялся, что обманут. Но нет. Всё по договору, всё по-честному. Перелёт, виза — бесплатно. Сейчас отправляю деньги домой семье.</p>
+ <div class="review-author">
+ <div class="review-avatar" style="background-image:url('img/review-2.jpg');"></div>
+ <div>
+ <div class="review-name">Nguyen Van Minh</div>
+ <div class="review-loc">Ханой, Вьетнам</div>
+ </div>
+ </div>
+ </div>
+
+ <div class="review-card">
+ <div class="review-stars"><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg></div>
+ <p class="review-text">У меня не было ничего: ни работы, ни перспектив. Знакомый рассказал об этой программе. Через три недели я уже был в самолёте. Это лучшее решение в моей жизни.</p>
+ <div class="review-author">
+ <div class="review-avatar" style="background-image:url('img/review-3.jpg');"></div>
+ <div>
+ <div class="review-name">Carlos Dela Cruz</div>
+ <div class="review-loc">Манила, Филиппины</div>
+ </div>
+ </div>
+ </div>
+
+ <div class="review-card">
+ <div class="review-stars"><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg></div>
+ <p class="review-text">Подъёмные получил сразу по прилету, как и обещали. Деньги реальные. Жильё нормальное, команда поддерживает. Советую тем, кто готов работать серьёзно.</p>
+ <div class="review-author">
+ <div class="review-avatar" style="background-image:url('img/review-4.jpg');"></div>
+ <div>
+ <div class="review-name">Andi Wijaya</div>
+ <div class="review-loc">Сурабая, Индонезия</div>
+ </div>
+ </div>
+ </div>
+
+ <div class="review-card">
+ <div class="review-stars"><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg></div>
+ <p class="review-text">Процесс прозрачный. На каждом этапе объясняли, что происходит. Медосмотр, виза, билеты — всё организовали за меня. Главное — не тянуть, подавать сразу.</p>
+ <div class="review-author">
+ <div class="review-avatar" style="background-image:url('img/review-5.jpg');"></div>
+ <div>
+ <div class="review-name">Tran Quang Huy</div>
+ <div class="review-loc">Хошимин, Вьетнам</div>
+ </div>
+ </div>
+ </div>
+
+ <div class="review-card">
+ <div class="review-stars"><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg><svg viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 3.917 1.48-8.279L0 9.306l8.332-1.151z"/></svg></div>
+ <p class="review-text">Семья переживала за меня, особенно мама. Но менеджеры отвечали на все вопросы, прислали контакты ребят, которые уже там. Теперь и мама спокойна — я обеспечиваю их.</p>
+ <div class="review-author">
+ <div class="review-avatar" style="background-image:url('img/review-1.jpg');"></div>
+ <div>
+ <div class="review-name">Rizky Pratama</div>
+ <div class="review-loc">Бандунг, Индонезия</div>
+ </div>
+ </div>
+ </div>
+
+ </div>
+</section>
+
+<!-- APPLY -->
+<section id="apply">
+ <div class="container">
+ <div class="ap-grid">
+ <div class="ap-l">
+ <p class="s-eye">Действуй сейчас</p>
+ <h2 class="s-ttl">Подать<br/>заявку</h2>
+ <p>Заполни форму ниже. Мы ответим в течение 24 часов. Места ограничены — не откладывай.</p>
+ <div class="ct-list">
+ <div class="ct"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span>Мы свяжемся с вами в течение 24 часов после заявки</span></div>
+ </div>
+ </div>
+ <div>
+ <div class="fbox">
+ <div class="fhead">Отправить заявку</div>
+ <form id="appForm" novalidate>
+ <div class="form-error" id="formError" role="alert"></div>
+ <div class="honeypot" aria-hidden="true"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"/></label></div>
+ <!-- Защита от ботов: timestamp + proof-of-work nonce -->
+ <input type="hidden" name="ts" id="f_ts" value=""/>
+ <input type="hidden" name="pow" id="f_pow" value=""/>
+ <input type="hidden" name="challenge" id="f_challenge" value=""/>
+ <div class="fg-row">
+ <div class="fg"><label for="name">Имя</label><input id="name" name="name" type="text" required autocomplete="name" placeholder="Ваше имя"/></div>
+ <div class="fg"><label for="age">Возраст</label><input id="age" name="age" type="number" placeholder="Лет" min="18" max="55" required/></div>
+ </div>
+ <div class="fg"><label for="country">Страна</label><select id="country" name="country" required><option value="" disabled selected>Выберите страну</option><option>Россия</option><option>Вьетнам</option><option>Индонезия</option><option>Камбоджа</option><option>Лаос</option><option>Малайзия</option><option>Мьянма</option><option>Филиппины</option><option>Сингапур</option><option>Таиланд</option><option>Тимор-Лешти</option><option>Бруней</option></select></div>
+ <div class="fg"><label for="phone">Телефон для связи</label><input id="phone" name="phone" type="tel" required autocomplete="tel" placeholder="+7 000 000-00-00"/></div>
+ <div class="fg"><label for="experience">Опыт</label><select id="experience" name="experience"><option value="" disabled selected>—</option><option>Нет опыта</option><option>Срочная служба</option><option>Контрактная служба</option><option>Другой релевантный опыт</option></select></div>
+ <div class="fg"><label for="about">О себе (опционально)</label><textarea id="about" name="about" placeholder="Физическая форма, навыки, вопросы..."></textarea></div>
+ <button type="submit" class="sbtn">Отправить заявку →</button>
+ <p class="fnote">Ответим в течение 24 часов. Конфиденциально.</p>
+ </form>
+ <div class="fok" id="fok">
+ <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+ <h3>Принято!</h3>
+ <p>Свяжемся с вами в течение 24 часов.</p>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+</section>
+</main>
+
+<footer>
+ <div class="ft">
+ <div>
+ <a href="#" class="flogo">Za<em>Vod</em></a>
+ <p class="fdesc">Изменить жизнь. Начать заново. Мы сопровождаем каждого кандидата от первой заявки до начала службы.</p>
+ </div>
+ <div class="fc">
+ <h5>Навигация</h5>
+ <a href="#specialty">Служба по специальности</a>
+ <a href="#benefits">Выплаты и документы</a>
+ <a href="#choice">Сделать выбор сейчас</a>
+ <a href="#process">Как это происходит</a>
+ <a href="#soldiers">Солдаты ВС России</a>
+ <a href="#apply">Подать заявку</a>
+ </div>
+ </div>
+ <div class="fb">
+ <span>© 2026 ZaVod.</span>
+ <span>Измени жизнь. Начни заново.</span>
+ </div>
+</footer>
+
+<script>
+/* RU-ONLY: site is Russian only — language switcher & auto-detect removed */
+
+/* NAV STATE */
+const nav=document.querySelector('nav');
+const setNavState=()=>nav.classList.toggle('nav-scrolled',window.scrollY>12);
+setNavState();
+window.addEventListener('scroll',setNavState,{passive:true});
+
+/* ANTI-BOT / ANTI-DDoS
+ Слои: timing (человек >3 сек), proof-of-work (~50-150 мс CPU),
+ honeypot, rate-limit (1 заявка/мин на устройство), повторы в сессии.
+ Цель: сделать авто-сабмит ботов/сканеров ФБ нетривиальным без CAPTCHA. */
+const RATE_LIMIT_MS = 60_000; // 1 заявка в минуту на устройство
+const MIN_FILL_MS = 3_000; // человек заполняет форму >3 сек
+const POW_PREFIX = '0000'; // 16 бит сложности → ~50-150 мс на клиенте
+const POW_MAX_ITER = 500_000; // предохранитель от бесконечного цикла
+const fTs = document.getElementById('f_ts');
+const fPow = document.getElementById('f_pow');
+const fCh = document.getElementById('f_challenge');
+
+function startChallenge(){
+ /* Запоминаем момент показа формы — для timing check */
+ fTs.value = String(Date.now());
+ /* Случайный challenge (16 hex) */
+ const arr = new Uint8Array(8);
+ (crypto||{}).getRandomValues ? crypto.getRandomValues(arr) : arr.forEach((_,i)=>arr[i]=Math.random()*256);
+ const challenge = Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+ fCh.value = challenge;
+ /* Proof-of-work: ищем nonce так, чтобы SHA-256(challenge:nonce) начинался с POW_PREFIX */
+ /* Используем SubtleCrypto (async) — не блокирует UI */
+ if(crypto&&crypto.subtle){
+ let nonce=0;
+ const enc = new TextEncoder();
+ const tick = ()=>{
+ const batch = 2000;
+ let stop=false;
+ (async ()=>{
+ for(let i=0;i<batch&&!stop;i++){
+ const data = enc.encode(challenge+':'+(nonce+i));
+ const buf = await crypto.subtle.digest('SHA-256', data);
+ const hex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+ if(hex.startsWith(POW_PREFIX)){
+ fPow.value = String(nonce+i);
+ return;
+ }
+ }
+ nonce += batch;
+ if(nonce < POW_MAX_ITER){ setTimeout(tick, 0); }
+ })();
+ };
+ tick();
+ } else {
+ /* Фолбэк для совсем старых браузеров — помечаем, сервер проверит сильнее */
+ fPow.value = 'no-webcrypto';
+ }
+}
+startChallenge();
+
+/* FORM */
+document.getElementById('appForm').addEventListener('submit', async e=>{
+ e.preventDefault();
+ const form = e.currentTarget;
+ const error = document.getElementById('formError');
+ const age = Number(form.age.value);
+ const subBtn = form.querySelector('.sbtn');
+ error.style.display='none';
+ error.textContent='';
+
+ /* 1. Honeypot — бот заполняет невидимое поле */
+ if(form.website.value){
+ /* Тихо имитируем успех, чтобы бот не понял */
+ form.style.display='none';
+ document.getElementById('fok').style.display='block';
+ return;
+ }
+
+ /* 2. Timing check — слишком быстро = бот */
+ const elapsed = Date.now() - Number(fTs.value||0);
+ if(elapsed < MIN_FILL_MS){
+ error.textContent = 'Слишком быстро. Пожалуйста, заполните форму внимательно.';
+ error.style.display='block';
+ return;
+ }
+
+ /* 3. Proof-of-work — челлендж должен быть решён */
+ if(!fPow.value || fPow.value==='no-webcrypto'){
+ error.textContent = 'Подождите пару секунд перед отправкой.';
+ error.style.display='block';
+ return;
+ }
+
+ /* 4. Rate-limit — 1 заявка в минуту с устройства */
+ let lastSent = 0;
+ try{ lastSent = Number(localStorage.getItem('zavod_last_submit')||0); }catch(e){}
+ if(lastSent && (Date.now()-lastSent) < RATE_LIMIT_MS){
+ const wait = Math.ceil((RATE_LIMIT_MS-(Date.now()-lastSent))/1000);
+ error.textContent = 'Заявка уже отправлена. Подождите ' + wait + ' сек.';
+ error.style.display='block';
+ return;
+ }
+
+ /* 5. Валидация полей */
+ if(!form.checkValidity()||age<18||age>55){
+ error.textContent='Проверьте обязательные поля: имя, возраст 18–55, страна и телефон.';
+ error.style.display='block';
+ form.querySelector(':invalid')?.focus();
+ return;
+ }
+
+ /* 6. Отправка в Google Sheets */
+ subBtn.disabled = true;
+ subBtn.style.opacity = '0.6';
+ subBtn.textContent = 'Отправка…';
+
+ const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzZrlEIgfMoa5IaSbgATHzmNjNICfkGW4D05v6sEGYy14pptwGu4KPGt6DGnW6HpEY9/exec';
+
+ const payload = {
+ name: form.name.value.trim(),
+ age: form.age.value,
+ country: form.country.value,
+ phone: form.phone.value.trim(),
+ experience: form.experience.value,
+ about: form.about.value.trim(),
+ ts: fTs.value,
+ pow: fPow.value,
+ challenge: fCh.value,
+ lang: 'ru',
+ referrer: document.referrer || location.search || ''
+ };
+
+ try{
+ const fd = new FormData();
+ Object.entries(payload).forEach(([k,v])=>fd.append(k,v));
+ /* no-cors: Apps Script не возвращает CORS-заголовки, но запись проходит */
+ await fetch(SHEETS_URL, { method:'POST', body: fd, mode:'no-cors' });
+ try{ localStorage.setItem('zavod_last_submit', String(Date.now())); }catch(e){}
+ /* Meta Pixel: трекаем успешную заявку как Lead */
+ if(typeof fbq==='function'){ fbq('track','Lead'); }
+ form.style.display='none';
+ document.getElementById('fok').style.display='block';
+ }catch(err){
+ subBtn.disabled = false;
+ subBtn.style.opacity = '1';
+ subBtn.textContent = 'Отправить заявку →';
+ error.textContent = 'Ошибка отправки. Попробуйте ещё раз.';
+ error.style.display='block';
+ }
+});
+
+/* SCROLL REVEAL */
+const ro=new IntersectionObserver(ents=>{
+ ents.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');ro.unobserve(e.target);}});
+},{threshold:0,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.rv').forEach((el,i)=>{
+ el.style.transitionDelay=(i%4)*.1+'s';
+ ro.observe(el);
+});
+const so=new IntersectionObserver(ents=>{
+ ents.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');so.unobserve(e.target);}});
+},{threshold:0,rootMargin:'0px 0px -20px 0px'});
+document.querySelectorAll('.step').forEach((el,i)=>{
+ el.style.transitionDelay=i*.1+'s';
+ so.observe(el);
+});
+/* Fallback: если элементы уже в viewport при загрузке */
+setTimeout(()=>{
+ document.querySelectorAll('.rv:not(.vis),.step:not(.vis)').forEach(el=>{
+ const r=el.getBoundingClientRect();
+ if(r.top<window.innerHeight){el.classList.add('vis');}
+ });
+},100);
+</script>
+</body>
+</html>
