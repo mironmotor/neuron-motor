@@ -329,6 +329,79 @@ audio {
  display: none;
 }
 
+.cgi-bar {
+ display: flex;
+ align-items: center;
+ gap: 10px;
+ flex-wrap: wrap;
+ margin-bottom: 14px;
+ padding: 10px 12px;
+ border: 1px solid var(--line);
+ border-radius: 8px;
+ background: rgba(16, 19, 26, 0.86);
+}
+
+.cgi-toggle {
+ min-height: 38px;
+ padding: 0 14px;
+ border: 1px solid var(--line);
+ border-radius: 7px;
+ background: var(--panel-soft);
+ color: var(--muted);
+ font-weight: 800;
+ transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.cgi-bar[data-state="open"] .cgi-toggle {
+ border-color: rgba(53, 242, 154, 0.65);
+ background: rgba(53, 242, 154, 0.13);
+ color: var(--green);
+}
+
+.cgi-url {
+ flex: 1 1 220px;
+ min-height: 38px;
+ padding: 0 12px;
+ border: 1px solid var(--line);
+ border-radius: 7px;
+ background: var(--panel-soft);
+ color: var(--text);
+ font-size: 0.88rem;
+}
+
+.cgi-state {
+ display: flex;
+ align-items: center;
+ gap: 8px;
+ color: var(--muted);
+ font-size: 0.88rem;
+}
+
+.cgi-dot {
+ width: 9px;
+ height: 9px;
+ border-radius: 50%;
+ background: var(--muted);
+}
+
+.cgi-bar[data-state="open"] .cgi-dot {
+ background: var(--green);
+}
+
+.cgi-bar[data-state="connecting"] .cgi-dot {
+ background: var(--amber);
+}
+
+.cgi-bar[data-state="error"] .cgi-dot {
+ background: var(--rose);
+}
+
+.cgi-focus {
+ color: var(--cyan);
+ font-size: 0.88rem;
+ font-weight: 800;
+}
+
 .visual-stack {
  display: grid;
  gap: 14px;

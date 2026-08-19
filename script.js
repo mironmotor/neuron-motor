@@ -71,6 +71,26 @@ const musicHarmonicsValue = document.getElementById('musicHarmonicsValue');
 const musicMinHzValue = document.getElementById('musicMinHzValue');
 const musicMaxHzValue = document.getElementById('musicMaxHzValue');
 const modeTabs = [...document.querySelectorAll('.mode-tab')];
+const cgiBar = document.getElementById('cgiBar');
+const cgiToggle = document.getElementById('cgiToggle');
+const cgiUrl = document.getElementById('cgiUrl');
+const cgiStatus = document.getElementById('cgiStatus');
+const cgiFocus = document.getElementById('cgiFocus');
+
+const cgiBridge = new CgiBridge({
+ url: cgiUrl.value,
+ onStatus: (state, message) => {
+ cgiBar.dataset.state = state;
+ cgiStatus.textContent = message;
+ cgiToggle.textContent = state === 'open' || state === 'connecting' ? 'Отключить CGI' : 'Подключить CGI';
+ if (state !== 'open') cgiFocus.textContent = '';
+ },
+ onMessage: message => {
+ if (message.type === 'focus' && message.state) {
+ cgiFocus.textContent = `фокус ядра: ${message.state.mode} ${Math.round(message.state.confidence * 100)}%`;
+ }
+ }
+});
 
 btn.addEventListener('click', toggleMic);
 audioFile.addEventListener('change', handleAudioFile);
@@ -87,6 +107,17 @@ modeTabs.forEach(tab => {
  if (!isRunning) drawIdle();
  });
 });
+
+cgiToggle.addEventListener('click', () => cgiBridge.toggle(cgiUrl.value.trim()));
+cgiUrl.addEventListener('change', () => {
+ if (cgiBridge.connected) cgiBridge.disconnect().connect(cgiUrl.value.trim());
+});
+
+const cgiParam = new URLSearchParams(location.search).get('cgi');
+if (cgiParam) {
+ if (cgiParam !== '1') cgiUrl.value = cgiParam;
+ cgiBridge.connect(cgiUrl.value.trim());
+}
 
 buildToneGrid();
 updateToneUI();
@@ -296,6 +327,14 @@ function animate() {
 
  publishVoiceState(voiceState);
  publishMusicState(musicState);
+ cgiBridge.push(buildCgiPayload(displayMode, {
+ levels,
+ analysis,
+ voiceState,
+ musicState,
+ tone: toneBands[selectedTone],
+ toneLevel: currentLevel / 255
+ }));
 
  drawSpectrum(levels, peak, analysis, voiceState, musicState);
  drawHistory(levels, analysis, voiceState, musicState);
